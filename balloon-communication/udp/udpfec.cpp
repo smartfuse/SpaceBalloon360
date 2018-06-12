@@ -354,97 +354,6 @@ void send_udp(uint8_t *data, size_t data_len, int crc_correct) {
     free_buffer(&buffer);
 }
 
-void process_packet(monitor_interface_t *interface, block_buffer_t *block_buffer_list, int adapter_no) {
-		struct pcap_pkthdr * ppcapPacketHeader = NULL;
-		struct ieee80211_radiotap_iterator rti;
-		PENUMBRA_RADIOTAP_DATA prd;
-		u8 payloadBuffer[MAX_PACKET_LENGTH];
-		u8 *pu8Payload = payloadBuffer;
-		int bytes;
-		int n;
-		int retval;
-		int u16HeaderLen;
-
-		// receive
-
-		retval = pcap_next_ex(interface->ppcap, &ppcapPacketHeader,
-		    (const u_char**)&pu8Payload);
-
-		if (retval < 0) {
-			if (strcmp("The interface went down",pcap_geterr(interface->ppcap)) == 0) {
-			    fprintf(stderr, "rx: The interface went down\n");
-			    exit(9);
-			} else {
-			    fprintf(stderr, "rx: %s\n", pcap_geterr(interface->ppcap));
-			    exit(2);
-			}
-		}
-
-		if (retval != 1)
-			return;
-
-		// fetch radiotap header length from radiotap header (seems to be 36 for Atheros and 18 for Ralink)
-		u16HeaderLen = (pu8Payload[2] + (pu8Payload[3] << 8));
-//		fprintf(stderr, "u16headerlen: %d\n", u16HeaderLen);
-
-		if (ppcapPacketHeader->len <
-		    (u16HeaderLen + interface->n80211HeaderLength))
-			return;
-//		fprintf(stderr, "ppcapPacketHeader->len: %d\n", ppcapPacketHeader->len);
-
-		bytes = ppcapPacketHeader->len -
-			(u16HeaderLen + interface->n80211HeaderLength);
-		if (bytes < 0)
-			return;
-//		fprintf(stderr, "bytes: %d\n", bytes); 
-
-		if (ieee80211_radiotap_iterator_init(&rti,
-		    (struct ieee80211_radiotap_header *)pu8Payload,
-		    ppcapPacketHeader->len) < 0)
-			return;
-
-		while ((n = ieee80211_radiotap_iterator_next(&rti)) == 0) {
-			switch (rti.this_arg_index) {
-		    // we don't use these radiotap infos right now, disabled
-		    /*
-			case IEEE80211_RADIOTAP_RATE:
-				prd.m_nRate = (*rti.this_arg);
-				break;
-
-			case IEEE80211_RADIOTAP_CHANNEL:
-				prd.m_nChannel =
-				    le16_to_cpu(*((u16 *)rti.this_arg));
-				prd.m_nChannelFlags =
-				    le16_to_cpu(*((u16 *)(rti.this_arg + 2)));
-				break;
-
-			case IEEE80211_RADIOTAP_ANTENNA:
-				prd.m_nAntenna = (*rti.this_arg) + 1;
-				break;
-		    */
-			case IEEE80211_RADIOTAP_FLAGS:
-				prd.m_nRadiotapFlags = *rti.this_arg;
-				break;
-			case IEEE80211_RADIOTAP_DBM_ANTSIGNAL:
-				rx_status->adapter[adapter_no].current_signal_dbm = (int8_t)(*rti.this_arg);
-				break;
-
-			}
-		}
-		pu8Payload += u16HeaderLen + interface->n80211HeaderLength;
-//	        fprintf(stderr, "pu8payload: %d\n", pu8Payload);
-
-		// Ralink and Atheros both always supply the FCS to userspace, no need to check
-		//if (prd.m_nRadiotapFlags & IEEE80211_RADIOTAP_F_FCS)
-		//bytes -= 4;
-
-		int checksum_correct = (prd.m_nRadiotapFlags & 0x40) == 0;
-
-		process_payload(pu8Payload, bytes, checksum_correct, block_buffer_list, adapter_no);
-}
-
-
-
 int main(int argc, char *argv[])
 {
 
@@ -501,18 +410,13 @@ int main(int argc, char *argv[])
 
 
 	for(;;)
-	{ 
-        ssize_t receive_data(session, char buffer[], size_t buffer_len) {
-            int sockfd = session->sockfd;
-            ssize_t recv_len;
-            memset(buffer, 0, buffer_len);
-            if ((recv_len = (ssize_t) recvfrom(sockfd, buffer, buffer_len, 0, NULL, 0)) < 0) {
-                fprintf(stderr, "recvfrom() failed\n");
-                return -1;
-            }
-            return recv_len;
-        }
+	{
+        char    buffer[42*1024];    // just pick a number
 
+        ssize_t r = receive_data(session, &buffer[0], sizeof(buffer));
+        if (r > 0) {
+            process_payload(pu8Payload, bytes, checksum_correct, block_buffer_list, adapter_no);
+        }
     }
 
 	return (0);
