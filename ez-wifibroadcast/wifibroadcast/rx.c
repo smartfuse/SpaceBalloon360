@@ -342,6 +342,7 @@ void process_payload(uint8_t *data, size_t data_len, int crc_correct, block_buff
 
             int reconstruction_failed = datas_missing_c + datas_corrupt_c > good_fecs_c;
             if(reconstruction_failed) {
+                printf("Reconst failed");
                 //we did not have enough FEC packets to repair this block
                 rx_status->damaged_block_cnt++;
                 //fprintf(stderr, "Could not fully reconstruct block %x! Damage rate: %f (%d / %d blocks)\n", last_block_num, 1.0 * rx_status->damaged_block_cnt / rx_status->received_block_cnt, rx_status->damaged_block_cnt, rx_status->received_block_cnt);
