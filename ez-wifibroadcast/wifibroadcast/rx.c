@@ -645,8 +645,6 @@ int main(int argc, char *argv[]) {
 		        param_udp_remote_port = atoi(optarg); // NOLINT
 		        break;
 			default:
-				fprintf(stderr, "unknown switch %c\n", c);
-				usage();
 				break;
 		}
 	}
