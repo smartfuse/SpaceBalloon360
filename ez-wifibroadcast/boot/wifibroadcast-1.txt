@@ -51,19 +51,19 @@ FREQ_TX[1]=2472
 #
 # Wifi Datarate. Lower settings yield higher range and vice versa.
 # 1=5.5Mbit, 2=11Mbit, 3=12Mbit, 4=19.5Mbit/18Mbit, 5=24Mbit, 6=36Mbit
-DATARATE=4
+DATARATE=1
 #
 #
 # Choose between 30, 40, 48, 59.9
-FPS=48
+FPS=60
 #
 #
 # FEC SETTINGS
 # max. blocklength Ralink = 2278, Atheros = 1550
 # min. sensible blocklength ~ 700
-VIDEO_BLOCKS=8
-VIDEO_FECS=4
-VIDEO_BLOCKLENGTH=1024
+VIDEO_BLOCKS=24
+VIDEO_FECS=12
+VIDEO_BLOCKLENGTH=768
 #
 #
 # Telemetry transmission method:
@@ -122,6 +122,9 @@ KEYFRAMERATE=5
 #
 # Set additional raspivid parameters here
 EXTRAPARAMS="-cd H264 -n -fl -ih -pf high -if both -ex sports -mm average -awb horizon"
+#
+#
+CAPTURE_PROGRAM=ffmpeg
 #
 #
 # Serial port and baudrate (19200 is minimum) to use for the R/C connection between air Pi and flight control
