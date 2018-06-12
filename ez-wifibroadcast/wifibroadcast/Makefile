@@ -7,7 +7,7 @@ all: rx_rc_telemetry_buf rx rx_rc_telemetry rssirx rssitx tx_rawsock tx_telemetr
 	gcc -c -o $@ $< $(CPPFLAGS)
 
 
-rx: rx.o lib.o radiotap.o fec.o
+rx: rx.o lib.o radiotap.o fec.o udp/rx_udp_util.o udp/udp_client.o
 	gcc -o $@ $^ $(LDFLAGS)
 
 rx_rc_telemetry: rx_rc_telemetry.o lib.o radiotap.o
@@ -68,4 +68,4 @@ sharedmem_init_tx: sharedmem_init_tx.o lib.o
 	gcc -o $@ $^ $(LDFLAGS)
 
 clean:
-	rm -f rx_rc_telemetry_buf rx rx_rc_telemetry rssirx rssitx tx_rawsock tx_telemetry tx_measure rx_status tracker rssilogger syslogger channelscan check_alive rssi_forward wifiscan wifibackgroundscan sharedmem_init_rx sharedmem_init_tx *~ *.o
+	rm -f rx_rc_telemetry_buf rx rx_rc_telemetry rssirx rssitx tx_rawsock tx_telemetry tx_measure rx_status tracker rssilogger syslogger channelscan check_alive rssi_forward wifiscan wifibackgroundscan sharedmem_init_rx sharedmem_init_tx *~ *.o udp/*.o udp/test/*.o

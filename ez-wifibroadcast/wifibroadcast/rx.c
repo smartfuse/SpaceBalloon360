@@ -17,12 +17,15 @@
 #include "lib.h"
 #include "wifibroadcast.h"
 #include "radiotap.h"
+#include "udp/rx_udp_util.h"
+#include "udp/udp_client.h"
 #include <time.h>
 #include <sys/resource.h>
 
 #define MAX_PACKET_LENGTH 4192
 #define MAX_USER_PACKET_LENGTH 2278
 #define MAX_DATA_OR_FEC_PACKETS_PER_BLOCK 32
+#define MAX_ADDRESS_LENGTH 500
 
 #define DEBUG 0
 #define debug_print(fmt, ...) do { if (DEBUG) fprintf(stderr, fmt, __VA_ARGS__); } while (0)
@@ -43,6 +46,11 @@ int param_data_packets_per_block = 8;
 int param_fec_packets_per_block = 4;
 int param_block_buffers = 1;
 int param_packet_length = 1024;
+
+char remote_address[MAX_ADDRESS_LENGTH];
+int param_udp_remote_port = 0;
+int param_udp_receive_port = 0;
+UdpSession session = NULL;
 
 wifibroadcast_rx_status_t *rx_status = NULL;
 int max_block_num = -1;
@@ -89,6 +97,9 @@ void usage(void) {
 	    "-f <bytes>  Bytes per packet (default %d. max %d). This is also the FEC block size. Needs to match with tx\n"
 	    "-d <blocks> Number of transmissions blocks that are buffered (default 1). This is needed in case of diversity if one\n"
 	    "            adapter delivers data faster than the other. Note that this increases latency.\n"
+		"-s <ip>     the hostname of the remote, required for both the UDP sender and receiver\n"
+  		"-n <port>   which port to send received data to, paired with -s"
+		"-u <port>   which port to receive data on rather than a WiFi adapter, paired with -s"
 	    "\n"
 	    "Example:\n"
 	    "  rx -b 8 -r 4 -f 1024 -t 1 wlan0 | cat /dev/null (receive standard DATA frames on wlan0 and send payload to /dev/null)\n"
@@ -179,6 +190,11 @@ void block_buffer_list_reset(block_buffer_t *block_buffer_list, size_t block_buf
 }
 
 void process_payload(uint8_t *data, size_t data_len, int crc_correct, block_buffer_t *block_buffer_list, int adapter_no) {
+    rx_status->adapter[adapter_no].received_packet_cnt++;
+//	rx_status->adapter[adapter_no].last_update = dbm_ts_now[adapter_no];
+//	fprintf(stderr,"lu[%d]: %lld\n",adapter_no,rx_status->adapter[adapter_no].last_update);
+//	rx_status->adapter[adapter_no].last_update = current_timestamp();
+
     wifi_packet_header_t *wph;
     int block_num;
     int packet_num;
@@ -510,10 +526,17 @@ void process_packet(monitor_interface_t *interface, block_buffer_t *block_buffer
 	// TODO: disable checksum handling in process_payload(), not needed since we have fscfail disabled
 	int checksum_correct = 1;
 
-	rx_status->adapter[adapter_no].received_packet_cnt++;
-//	rx_status->adapter[adapter_no].last_update = dbm_ts_now[adapter_no];
-//	fprintf(stderr,"lu[%d]: %lld\n",adapter_no,rx_status->adapter[adapter_no].last_update);
-//	rx_status->adapter[adapter_no].last_update = current_timestamp();
+	if (session != NULL) {
+	    struct RxStruct rxStruct;
+	    memset(rxStruct.data, 0, MAX_PACKET_LEN);
+	    memcpy(rxStruct.data, pu8Payload, bytes);
+	    rxStruct.crc_correct = checksum_correct;
+	    rxStruct.data_len = (uint32_t) bytes;
+
+	    char *buffer = create_buffer();
+	    send_data(session, buffer, write_buffer(buffer, rxStruct));
+	    free_buffer(&buffer);
+	}
 
 	process_payload(pu8Payload, bytes, checksum_correct, block_buffer_list, adapter_no);
 }
@@ -562,6 +585,16 @@ wifibroadcast_rx_status_t *status_memory_open(void) {
 	return tretval;
 }
 
+block_buffer_t *create_block_buffer_list() {
+    //block buffers contain both the block_num as well as packet buffers for a block.
+    block_buffer_t * block_buffer_list = malloc(sizeof(block_buffer_t) * param_block_buffers);
+    for(int i=0; i<param_block_buffers; ++i)
+    {
+        block_buffer_list[i].block_num = -1;
+        block_buffer_list[i].packet_buffer_list = lib_alloc_packet_buffer_list(param_data_packets_per_block+param_fec_packets_per_block, MAX_PACKET_LENGTH);
+    }
+}
+
 int main(int argc, char *argv[]) {
 	setpriority(PRIO_PROCESS, 0, -10);
 
@@ -574,40 +607,45 @@ int main(int argc, char *argv[]) {
 
 	block_buffer_t *block_buffer_list;
 
-	while (1) {
-		int nOptionIndex;
-		static const struct option optiona[] = {
+	int c;
+	int nOptionIndex;
+	static const struct option optiona[] = {
 			{ "help", no_argument, &flagHelp, 1 },
 			{ 0, 0, 0, 0 }
-		};
-		int c = getopt_long(argc, argv, "h:p:b:r:d:f:", optiona, &nOptionIndex);
+	};
 
-		if (c == -1)
-			break;
+	while ((c = getopt_long(argc, argv, "h:p:b:r:d:f:s:n:u:", optiona, &nOptionIndex) != -1)) {
 		switch (c) {
-		case 0: // long option
-			break;
-		case 'h': // help
-			usage();
-		case 'p': // port
-			param_port = atoi(optarg);
-			break;
-		case 'b': // data blocks
-			param_data_packets_per_block = atoi(optarg);
-			break;
-		case 'r': // fec blocks
-			param_fec_packets_per_block = atoi(optarg);
-			break;
-		case 'd': // block buffers
-			param_block_buffers = atoi(optarg);
-			break;
-		case 'f': // packet size
-			param_packet_length = atoi(optarg);
-			break;
-		default:
-			fprintf(stderr, "unknown switch %c\n", c);
-			usage();
-			break;
+			case 'h': // help
+				usage();
+			case 'p': // port
+				param_port = atoi(optarg); // NOLINT
+				break;
+			case 'b': // data blocks
+				param_data_packets_per_block = atoi(optarg); // NOLINT
+				break;
+			case 'r': // fec blocks
+				param_fec_packets_per_block = atoi(optarg); // NOLINT
+				break;
+			case 'd': // block buffers
+				param_block_buffers = atoi(optarg); // NOLINT
+				break;
+			case 'f': // packet size
+				param_packet_length = atoi(optarg); // NOLINT
+				break;
+			case 's':
+				strncpy(remote_address, optarg, MAX_ADDRESS_LENGTH);
+				break;
+			case 'n':
+				param_udp_remote_port = atoi(optarg); // NOLINT
+                break;
+		    case 'u':
+		        param_udp_remote_port = atoi(optarg); // NOLINT
+		        break;
+			default:
+				fprintf(stderr, "unknown switch %c\n", c);
+				usage();
+				break;
 		}
 	}
 
@@ -628,6 +666,24 @@ int main(int argc, char *argv[]) {
 
 	char path[45], line[100];
 	FILE* procfile;
+
+	if (param_udp_remote_port > 0 && strlen(remote_address) != 0) {
+	    session = start_session(remote_address, param_udp_remote_port, 0);
+	} else if(param_udp_receive_port > 0 && strlen(remote_address) != 0) {
+	    session = start_session(remote_address, param_udp_receive_port, 1);
+	    char *buffer = create_buffer();
+	    struct RxStruct rxStruct;
+        ssize_t datalen;
+        while ((datalen = receive_data(session, buffer, MAX_BUFFER_LEN)) >= 0) {
+	        if (datalen == 0) {
+	            continue;
+	        }
+	        read_buffer(buffer, &rxStruct);
+	        block_buffer_list = create_block_buffer_list();
+	        process_payload(rxStruct.data, rxStruct.data_len, rxStruct.crc_correct, block_buffer_list, 0);
+	    }
+	    free_buffer(&buffer);
+	}
 
 	while(x < argc && num_interfaces < MAX_PENUMBRA_INTERFACES) {
 		open_and_configure_interface(argv[x], param_port, interfaces + num_interfaces);
@@ -654,13 +710,7 @@ int main(int argc, char *argv[]) {
 
 	rx_status->wifi_adapter_cnt = num_interfaces;
 
-	//block buffers contain both the block_num as well as packet buffers for a block.
-	block_buffer_list = malloc(sizeof(block_buffer_t) * param_block_buffers);
-	for(i=0; i<param_block_buffers; ++i)
-	{
-    	    block_buffer_list[i].block_num = -1;
-    	    block_buffer_list[i].packet_buffer_list = lib_alloc_packet_buffer_list(param_data_packets_per_block+param_fec_packets_per_block, MAX_PACKET_LENGTH);
-	}
+    create_block_buffer_list();
 
 	for(;;) {
 
