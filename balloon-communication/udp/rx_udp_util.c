@@ -13,7 +13,7 @@ void free_buffer(char **buffer_ref) {
 }
 
 size_t write_buffer(char *buffer, struct RxStruct rx_struct) {
-    size_t data_len = sizeof(int) + sizeof(size_t) + sizeof(char) * rx_struct.data_len;
+    size_t data_len = sizeof(int) + sizeof(uint32_t) + sizeof(char) * rx_struct.data_len;
     memset(buffer, 0, MAX_BUFFER_LEN);
 
     // Pack the checksum field
@@ -22,7 +22,7 @@ size_t write_buffer(char *buffer, struct RxStruct rx_struct) {
 
     // Pack the data length field
     *((size_t *) buffer) = rx_struct.data_len;
-    buffer += sizeof(size_t);
+    buffer += sizeof(uint32_t);
 
     memcpy(buffer, rx_struct.data, rx_struct.data_len);
     return data_len;
@@ -35,7 +35,7 @@ void read_buffer(char *buffer, struct RxStruct *rx_struct) {
 
     // Unpack data length field
     rx_struct->data_len = *((size_t *) buffer);
-    buffer += sizeof(size_t);
+    buffer += sizeof(uint32_t);
 
     // Zero out data field
     memset(rx_struct->data, 0, MAX_PACKET_LEN);
