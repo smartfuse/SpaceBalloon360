@@ -251,7 +251,7 @@ void process_payload(uint8_t *data, size_t data_len, int crc_correct, block_buff
         packet_buffer_t *packet_buffer_list = block_buffer_list[min_block_num_idx].packet_buffer_list;
         int last_block_num = block_buffer_list[min_block_num_idx].block_num;
         printf("HI 1 %d %d %d\n", crc_correct, block_num, max_block_num);
-        printf("HI 5 %d last_block_num\n", last_block_num);
+        printf("HI 5 %d %d last_block_num min_block_num_idx\n", last_block_num, min_block_num_idx);
 
         if(last_block_num != -1) {
             rx_status->received_block_cnt++;
