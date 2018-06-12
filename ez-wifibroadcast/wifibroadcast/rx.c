@@ -213,7 +213,6 @@ void process_payload(uint8_t *data, size_t data_len, int crc_correct, block_buff
     //or we have received a block_num that is several times smaller than the current window of buffers -> this indicated that either the window is too small or that the transmitter has been restarted
     int tx_restart = (block_num + 128*param_block_buffers < max_block_num);
     if((block_num > max_block_num || tx_restart) && crc_correct) {
-        printf("HI 2\n");
         if(tx_restart) {
             rx_status->tx_restart_cnt++;
             rx_status->received_block_cnt = 0;
@@ -232,7 +231,6 @@ void process_payload(uint8_t *data, size_t data_len, int crc_correct, block_buff
             block_buffer_list_reset(block_buffer_list, param_block_buffers, param_data_packets_per_block + param_fec_packets_per_block);
         }
 
-        printf("HI 3\n");
         //first, find the minimum block num in the buffers list. this will be the block that we replace
         int min_block_num = INT_MAX;
         int min_block_num_idx;
@@ -243,19 +241,13 @@ void process_payload(uint8_t *data, size_t data_len, int crc_correct, block_buff
             }
         }
 
-        printf("HI 4\n");
-
         //debug_print("removing block %x at index %i for block %x\n", min_block_num, min_block_num_idx, block_num);
 
         packet_buffer_t *packet_buffer_list = block_buffer_list[min_block_num_idx].packet_buffer_list;
         int last_block_num = block_buffer_list[min_block_num_idx].block_num;
-        printf("HI 1 %d %d %d\n", crc_correct, block_num, max_block_num);
-        printf("HI 5 %d %d %d last_block_num min_block_num_idx\n", last_block_num, min_block_num_idx, min_block_num);
 
         if(last_block_num != -1) {
             rx_status->received_block_cnt++;
-
-            printf("HI 6\n");
 
             //we have both pointers to the packet buffers (to get information about crc and vadility) and raw data pointers for fec_decode
             packet_buffer_t *data_pkgs[MAX_DATA_OR_FEC_PACKETS_PER_BLOCK];
@@ -349,7 +341,6 @@ void process_payload(uint8_t *data, size_t data_len, int crc_correct, block_buff
 
             int reconstruction_failed = datas_missing_c + datas_corrupt_c > good_fecs_c;
             if(reconstruction_failed) {
-                printf("Reconst failed\n");
                 //we did not have enough FEC packets to repair this block
                 rx_status->damaged_block_cnt++;
                 //fprintf(stderr, "Could not fully reconstruct block %x! Damage rate: %f (%d / %d blocks)\n", last_block_num, 1.0 * rx_status->damaged_block_cnt / rx_status->received_block_cnt, rx_status->damaged_block_cnt, rx_status->received_block_cnt);
@@ -678,10 +669,10 @@ int main(int argc, char *argv[]) {
         session = start_session(remote_address, param_udp_receive_port, 1);
         char *buffer = create_buffer();
         struct RxStruct rxStruct;
+        block_buffer_list = create_block_buffer_list();
         while (1) {
             receive_data(session, buffer, MAX_BUFFER_LEN);
             read_buffer(buffer, &rxStruct);
-            block_buffer_list = create_block_buffer_list();
             process_payload(rxStruct.data, rxStruct.data_len, rxStruct.crc_correct, block_buffer_list, 0);
         }
         free_buffer(&buffer);
