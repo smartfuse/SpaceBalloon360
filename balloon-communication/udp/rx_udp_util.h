@@ -5,10 +5,11 @@
 #define MAX_BUFFER_LEN 8384
 
 #include <stdlib.h>
+#include <inttypes.h>
 
 struct RxStruct {
     int crc_correct;
-    size_t data_len;
+    uint32_t data_len;
     uint8_t data[MAX_PACKET_LEN];
 } DataStruct;
 
