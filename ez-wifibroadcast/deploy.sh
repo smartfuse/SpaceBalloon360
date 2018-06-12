@@ -8,7 +8,7 @@ make clean
 make
 cd ..
 rm -rf ~/wifibroadcast
-ln -s `pwd`/wifiboadcast ~/wifibroadcast
+ln -s `pwd`/wifibroadcast ~/wifibroadcast
 rm -rf ~/.dotprofile
 cp -R dotprofile ~/.profile
 
