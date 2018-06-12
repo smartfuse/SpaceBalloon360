@@ -649,9 +649,6 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
-	if (optind >= argc)
-		usage();
-
     if(param_packet_length > MAX_USER_PACKET_LENGTH) {
 		printf("Packet length is limited to %d bytes (you requested %d bytes)\n", MAX_USER_PACKET_LENGTH, param_packet_length);
 		return (1);
@@ -666,7 +663,6 @@ int main(int argc, char *argv[]) {
 	char path[45], line[100];
 	FILE* procfile;
 
-	printf("%d %d %lu %d %s\n", param_udp_remote_port, param_udp_receive_port, strlen(remote_address), remote_address);
     if (param_udp_remote_port > 0 && strlen(remote_address) != 0) {
         session = start_session(remote_address, param_udp_remote_port, 0);
 	} else if(param_udp_receive_port > 0 && strlen(remote_address) != 0) {
