@@ -672,9 +672,12 @@ int main(int argc, char *argv[]) {
 		return (1);
 	}
 
+	printf("hey 102.25\n");
 	fec_init();
+    printf("hey 102.35\n");
 
 	rx_status = status_memory_open();
+    printf("hey 102.45\n");
 
 	int j = 0;
 	int x = optind;
