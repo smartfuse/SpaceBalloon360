@@ -213,7 +213,7 @@ void process_payload(uint8_t *data, size_t data_len, int crc_correct, block_buff
     //we have received a block number that exceeds the currently seen ones -> we need to make room for this new block
     //or we have received a block_num that is several times smaller than the current window of buffers -> this indicated that either the window is too small or that the transmitter has been restarted
     int tx_restart = (block_num + 128*param_block_buffers < max_block_num);
-    printf("HI 1\n");
+    printf("HI 1 %d\n", block_num);
     if((block_num > max_block_num || tx_restart) && crc_correct) {
         printf("HI 2\n");
         if(tx_restart) {
