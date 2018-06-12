@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 3.0)
 project(wifibroadcast C)
 
-set(CMAKE_C_STANDARD 11)
+# as per https://stackoverflow.com/questions/24840030/forcing-c99-in-cmake-to-use-for-loop-initial-declaration
+#set(CMAKE_C_STANDARD 11)
+set (CMAKE_C_FLAGS "-std=c11 ${CMAKE_C_FLAGS}")
 
 include_directories(.)
 include_directories(udp)
