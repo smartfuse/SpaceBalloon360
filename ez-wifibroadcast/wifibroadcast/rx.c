@@ -616,49 +616,45 @@ int main(int argc, char *argv[]) {
 			{ 0, 0, 0, 0 }
 	};
 
-	while ((c = getopt_long(argc, argv, "h:p:b:r:d:f:s:n:u:", optiona, &nOptionIndex) != -1)) {
+	while ((c = getopt_long(argc, argv, "h:p:b:r:d:f:s:n:u:", optiona, &nOptionIndex)) != -1) {
 		switch (c) {
 			case 'h': // help
 				usage();
 			case 'p': // port
-				param_port = atoi(optarg); // NOLINT
+                param_port = atoi(optarg); // NOLINT
 				break;
 			case 'b': // data blocks
-				param_data_packets_per_block = atoi(optarg); // NOLINT
+                param_data_packets_per_block = atoi(optarg); // NOLINT
 				break;
 			case 'r': // fec blocks
-				param_fec_packets_per_block = atoi(optarg); // NOLINT
+                param_fec_packets_per_block = atoi(optarg); // NOLINT
 				break;
 			case 'd': // block buffers
-				param_block_buffers = atoi(optarg); // NOLINT
+                param_block_buffers = atoi(optarg); // NOLINT
 				break;
 			case 'f': // packet size
-				param_packet_length = atoi(optarg); // NOLINT
+                param_packet_length = atoi(optarg); // NOLINT
 				break;
 			case 's':
-				strncpy(remote_address, optarg, MAX_ADDRESS_LENGTH);
+				strncpy(remote_address, optarg, strlen(optarg));
 				break;
 			case 'n':
-				param_udp_remote_port = atoi(optarg); // NOLINT
+                param_udp_remote_port = atoi(optarg); // NOLINT
                 break;
 		    case 'u':
-		        param_udp_remote_port = atoi(optarg); // NOLINT
+                param_udp_receive_port = atoi(optarg); // NOLINT
 		        break;
 			default:
 				break;
 		}
 	}
 
-	if (optind >= argc)
-		usage();
-
-	if(param_packet_length > MAX_USER_PACKET_LENGTH) {
+    if(param_packet_length > MAX_USER_PACKET_LENGTH) {
 		printf("Packet length is limited to %d bytes (you requested %d bytes)\n", MAX_USER_PACKET_LENGTH, param_packet_length);
 		return (1);
 	}
 
 	fec_init();
-
 	rx_status = status_memory_open();
 
 	int j = 0;
@@ -667,12 +663,12 @@ int main(int argc, char *argv[]) {
 	char path[45], line[100];
 	FILE* procfile;
 
-	if (param_udp_remote_port > 0 && strlen(remote_address) != 0) {
+    if (param_udp_remote_port > 0 && strlen(remote_address) != 0) {
         session = start_session(remote_address, param_udp_remote_port, 0);
 	} else if(param_udp_receive_port > 0 && strlen(remote_address) != 0) {
 	    session = start_session(remote_address, param_udp_receive_port, 1);
 	    char *buffer = create_buffer();
-	    struct RxStruct rxStruct;
+        struct RxStruct rxStruct;
         while (1) {
             receive_data(session, buffer, MAX_BUFFER_LEN);
 	        read_buffer(buffer, &rxStruct);
@@ -682,7 +678,7 @@ int main(int argc, char *argv[]) {
 	    free_buffer(&buffer);
 	}
 
-	while(x < argc && num_interfaces < MAX_PENUMBRA_INTERFACES) {
+    while(x < argc && num_interfaces < MAX_PENUMBRA_INTERFACES) {
 		open_and_configure_interface(argv[x], param_port, interfaces + num_interfaces);
 
 		snprintf(path, 45, "/sys/class/net/%s/device/uevent", argv[x]);
@@ -705,9 +701,9 @@ int main(int argc, char *argv[]) {
 		usleep(10000); // wait a bit between configuring interfaces to reduce Atheros and Pi USB flakiness
 	}
 
-	rx_status->wifi_adapter_cnt = num_interfaces;
+    rx_status->wifi_adapter_cnt = num_interfaces;
 
-    create_block_buffer_list();
+    block_buffer_list = create_block_buffer_list();
 
 	for(;;) {
 
