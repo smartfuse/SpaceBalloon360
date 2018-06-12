@@ -1,12 +1,14 @@
-
-#include "fec.h"
-#include "lib.h"
-#include "wifibroadcast.h"
-#include "radiotap.h"
-#include "udp/udp_client.h"
+#include <cstdio>
+#include "../fec.h"
+//#include "lib.h"
+//#include "wifibroadcast.h"
+//#include "radiotap.h"
+#include "udp_client.h"
 #include <time.h>
 #include <sys/resource.h>
-#include "udp/rx_udp_util.h"
+#include "rx_udp_util.h"
+
+using namespace std;
 
 #define MAX_PACKET_LENGTH 4192
 #define MAX_USER_PACKET_LENGTH 1450
@@ -17,15 +19,6 @@
 #define debug_print(fmt, ...) \
             do { if (DEBUG) fprintf(stderr, fmt, __VA_ARGS__); } while (0)
 
-
-// this is where we store a summary of the information from the radiotap header
-typedef struct  {
-	int m_nChannel;
-	int m_nChannelFlags;
-	int m_nRate;
-	int m_nAntenna;
-	int m_nRadiotapFlags;
-} __attribute__((packed)) PENUMBRA_RADIOTAP_DATA;
 
 
 int flagHelp = 0;
@@ -447,9 +440,6 @@ void process_packet(monitor_interface_t *interface, block_buffer_t *block_buffer
 
 		int checksum_correct = (prd.m_nRadiotapFlags & 0x40) == 0;
 
-		if (session != NULL) {
-		    send_udp(pu8Payload, bytes, checksum_correct);
-		}
 		process_payload(pu8Payload, bytes, checksum_correct, block_buffer_list, adapter_no);
 }
 
@@ -485,33 +475,45 @@ int main(int argc, char *argv[])
 	int x = optind;
 
 	char path[45], line[100];
-	FILE* procfile;
 
 
+    //block buffers contain both the block_num as well as packet buffers for a block.
+    block_buffer_list = malloc(sizeof(block_buffer_t) * param_block_buffers);
+    for(i=0; i<param_block_buffers; ++i)
+    {
+        block_buffer_list[i].block_num = -1;
+        block_buffer_list[i].packet_buffer_list = lib_alloc_packet_buffer_list(param_data_packets_per_block+param_fec_packets_per_block, MAX_PACKET_LENGTH);
+    }
 
+
+    // FIXME: hardcode... bind to all of them?
+    strncpy(remote_address, "192.168.1.249", MAX_ADDRESS_LENGTH);
+    remote_port = 6000;
+
+    fprintf(stderr, "my own udp server: %s:%u\n", &remote_address[0], remote_port);
+    if (strlen(remote_address) > 0) {
+        session = start_session(remote_address, remote_port, 1);
+        if (!session) {
+            fprintf(stderr, "whoops no udp bits\n");
+            return 0;
+        }
+    }
 
 
 	for(;;)
 	{ 
-		fd_set readset;
-		struct timeval to;
+        ssize_t receive_data(session, char buffer[], size_t buffer_len) {
+            int sockfd = session->sockfd;
+            ssize_t recv_len;
+            memset(buffer, 0, buffer_len);
+            if ((recv_len = (ssize_t) recvfrom(sockfd, buffer, buffer_len, 0, NULL, 0)) < 0) {
+                fprintf(stderr, "recvfrom() failed\n");
+                return -1;
+            }
+            return recv_len;
+        }
 
-		to.tv_sec = 0;
-		to.tv_usec = 1e5;
-	
-		FD_ZERO(&readset);
-		for(i=0; i<num_interfaces; ++i)
-			FD_SET(interfaces[i].selectable_fd, &readset);
-
-		int n = select(30, &readset, NULL, NULL, &to);
-
-		for(i=0; i<num_interfaces; ++i) {
-			if(n == 0) break;
-			if(FD_ISSET(interfaces[i].selectable_fd, &readset)) {
-            		    process_packet(interfaces + i, block_buffer_list, i);
-			}
-		}
-	}
+    }
 
 	return (0);
 }
