@@ -616,37 +616,44 @@ int main(int argc, char *argv[]) {
 			{ 0, 0, 0, 0 }
 	};
 
+	printf("HELLO\n");
 	while ((c = getopt_long(argc, argv, "h:p:b:r:d:f:s:n:u:", optiona, &nOptionIndex) != -1)) {
 		switch (c) {
 			case 'h': // help
 				usage();
 			case 'p': // port
-				param_port = atoi(optarg); // NOLINT
+                printf("world 22\n");
+                param_port = atoi(optarg); // NOLINT
 				break;
 			case 'b': // data blocks
-				param_data_packets_per_block = atoi(optarg); // NOLINT
+                printf("world 23\n");
+                param_data_packets_per_block = atoi(optarg); // NOLINT
 				break;
 			case 'r': // fec blocks
-				param_fec_packets_per_block = atoi(optarg); // NOLINT
+                printf("world 24\n");
+                param_fec_packets_per_block = atoi(optarg); // NOLINT
 				break;
 			case 'd': // block buffers
-				param_block_buffers = atoi(optarg); // NOLINT
+                printf("world 25\n");
+                param_block_buffers = atoi(optarg); // NOLINT
 				break;
 			case 'f': // packet size
-				param_packet_length = atoi(optarg); // NOLINT
+                printf("world 26\n");
+                param_packet_length = atoi(optarg); // NOLINT
 				break;
 			case 's':
-			    printf("hello 5\n");
+			    printf("world 27\n");
 				strncpy(remote_address, optarg, MAX_ADDRESS_LENGTH);
 				printf("hey 6\n");
 				break;
 			case 'n':
-                printf("hello 9\n");
+                printf("world 28\n");
                 param_udp_remote_port = atoi(optarg); // NOLINT
                 printf("hey 9\n");
                 break;
 		    case 'u':
-		        param_udp_remote_port = atoi(optarg); // NOLINT
+                printf("world 29\n");
+                param_udp_remote_port = atoi(optarg); // NOLINT
 		        break;
 			default:
 				break;
