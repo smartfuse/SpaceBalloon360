@@ -580,7 +580,7 @@ function tx_function {
     echo
     echo
 
-    if [ "$UDP" != "1"]; then
+    if [ "$UDP" != "1" ]; then
     	detect_nics
 	fi
 
@@ -836,7 +836,7 @@ function rx_function {
 
     sleep 1
 
-    if [ "$UDP" != "1"]; then
+    if [ "$UDP" != "1" ]; then
     	detect_nics
 	fi
 
@@ -974,7 +974,7 @@ function rx_function {
 
 	tmessage "Starting RX ... (FEC: $VIDEO_BLOCKS/$VIDEO_FECS/$VIDEO_BLOCKLENGTH)"
 
-	if [ "$UDP" != "1"]; then
+	if [ "$UDP" != "1" ]; then
     	UDP_FLAGS="-u"
     else
     	UDP_FLAGS="-p"
