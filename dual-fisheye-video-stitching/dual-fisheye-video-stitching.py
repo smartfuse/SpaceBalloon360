@@ -94,11 +94,10 @@ def main(input, output, input_width, number_of_frames, no_stdout):
     cap = cv2.VideoCapture(input)
 
     # define the codec and create VideoWriter object
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    
     out = None
 
     if output != "": 
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')    
         out = cv2.VideoWriter(output, fourcc, 30.0, (W, H))
 
     # obtain xmap and ymap
