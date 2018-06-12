@@ -21,6 +21,7 @@ def Hcalc(cap, xmap, ymap, W, H, W_remap, offsetYL, offsetYR, templ_shape, maxL,
     """Calculate and return homography for stitching process."""
     Mlist = []
     frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+
     for frame_no in np.arange(0, frame_count, int(frame_count / 10)):
         cap.set(cv2.CAP_PROP_POS_FRAMES, frame_no)
         ret, frame = cap.read()
@@ -59,12 +60,12 @@ def Hcalc(cap, xmap, ymap, W, H, W_remap, offsetYL, offsetYR, templ_shape, maxL,
             M, status = cv2.findHomography(pts2, pts1, cv2.RANSAC, 4.0)
             Mlist.append(M)
     M = np.average(np.array(Mlist), axis=0)
-    print M
+    # print M
     cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
     return M
 
 
-def main(input, output, input_width, number_of_frames):
+def main(input, output, input_width, number_of_frames, no_stdout):
 
     W = input_width
     H = input_width / 2
@@ -93,8 +94,12 @@ def main(input, output, input_width, number_of_frames):
     cap = cv2.VideoCapture(input)
 
     # define the codec and create VideoWriter object
-    fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    out = cv2.VideoWriter(output, fourcc, 30.0, (W, H))
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    
+    out = None
+
+    if output != "": 
+        out = cv2.VideoWriter(output, fourcc, 30.0, (W, H))
 
     # obtain xmap and ymap
     xmap, ymap = dewarp.buildmap(Ws=W_remap, Hs=H, Wd=H, Hd=H, fov=FOV)
@@ -154,14 +159,16 @@ def main(input, output, input_width, number_of_frames):
         # cv2.waitKey(0)
 
         # write results from phases
-        out.write(blended.astype(np.uint8))
-        cv2.imwrite(dir_path + '/output/0.png', cam1)
-        cv2.imwrite(dir_path + '/output/1.png', cam2)
-        cv2.imwrite(dir_path + '/output/2.png', shifted_cams)
-        cv2.imwrite(dir_path + '/output/3.png', warped2)
-        cv2.imwrite(dir_path + '/output/4.png', warped1)
-        cv2.imwrite(dir_path + '/output/labeled.png', labeled.astype(np.uint8))
-        cv2.imwrite(dir_path + '/output/blended.png', blended.astype(np.uint8))
+        if out:
+            out.write(blended.astype(np.uint8))
+
+        if no_stdout == False:
+            img_yuv = cv2.cvtColor(blended.astype(np.uint8), cv2.COLOR_BGR2YUV)
+            y, u, v = cv2.split(img_yuv)
+
+            sys.stdout.write(y.astype(np.uint8))
+            sys.stdout.write(u.astype(np.uint8))
+            sys.stdout.write(v.astype(np.uint8))
 
     count = 0
 
@@ -207,7 +214,7 @@ def main(input, output, input_width, number_of_frames):
             blended = blending.multi_band_blending(
                 warped1, warped2, mask, blend_level)
 
-            print "Processing frame " + str(count)
+            sys.stderr.write("Processing frame " + str(count) + "\n")
 
             count = count + 1
 
@@ -215,16 +222,26 @@ def main(input, output, input_width, number_of_frames):
                 break;
 
             # write the remapped frame
-            out.write(blended.astype(np.uint8))
-            # cv2.imshow('warped', blended.astype(np.uint8))
-            # if cv2.waitKey(1) & 0xFF == ord('q'):
-            #     break
+            if out:
+                out.write(blended.astype(np.uint8))
+            
+            if no_stdout == False:
+                img_yuv = cv2.cvtColor(blended.astype(np.uint8), cv2.COLOR_BGR2YUV)
+                y, u, v = cv2.split(img_yuv)
+
+                sys.stdout.write(y.astype(np.uint8))
+                sys.stdout.write(u.astype(np.uint8))
+                sys.stdout.write(v.astype(np.uint8))
+
         else:
             break
 
     # release everything if job is finished
     cap.release()
-    out.release()
+    
+    if out:
+        out.release()
+
     cv2.destroyAllWindows()
 
 
@@ -239,13 +256,12 @@ if __name__ == '__main__':
                     help="width of input dual fisheye video")
     ap.add_argument('--input', default="/dev/stdin",
                     help="path to the input dual fisheye video")
-    ap.add_argument('-o', '--output', metavar='OUTPUT.XYZ', required=False,
-                    default=dir_path + '/output/output.MP4',
-                    help="path to the output equirectangular video")
-
-
-    # for line in sys.stdin:
-    #     print line
+    ap.add_argument('-o', '--output', default="",
+                    help="path to the output stitched video")
+    ap.add_argument('-s', '--no_stdout', action="store_true",
+                    help="do not write output to standard output")
 
     args = vars(ap.parse_args())
-    main(args['input'], args['output'], args['input_width'], args['number_of_frames'])
+    main(args['input'], args['output'], args['input_width'], args['number_of_frames'], args['no_stdout'])
+
+
