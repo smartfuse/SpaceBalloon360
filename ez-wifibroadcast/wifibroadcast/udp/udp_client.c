@@ -26,13 +26,15 @@ UdpSession start_session(char *server_address, int server_port, int is_server) {
     memset(addrRef, 0, sizeof(struct sockaddr_in));
     addrRef->sin_family = AF_INET;
     addrRef->sin_port = htons(server_port); // NOLINT
-    if (inet_aton(server_address, &addrRef->sin_addr) == 0) {
-        fprintf(stderr, "inet_aton() failed\n");
-        return NULL;
-    }
 
-    if (is_server && bind(sockfd, (const struct sockaddr *) addrRef, sizeof(struct sockaddr)) == -1) {
-        fprintf(stderr, "bind() failed\n");
+    if (is_server) {
+        addrRef->sin_addr.s_addr = htonl(INADDR_ANY);
+        if (bind(sockfd, (const struct sockaddr *) addrRef, sizeof(struct sockaddr)) == -1) {
+            fprintf(stderr, "bind() failed\n");
+            return NULL;
+        }
+    } else if (inet_aton(server_address, &addrRef->sin_addr) == 0) {
+        fprintf(stderr, "inet_aton() failed\n");
         return NULL;
     }
 
