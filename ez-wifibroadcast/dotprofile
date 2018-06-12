@@ -579,7 +579,10 @@ function tx_function {
 
     echo
     echo
-    detect_nics
+
+    if [ "$UDP" != "1"]; then
+    	detect_nics
+	fi
 
     sleep 1
     echo
@@ -766,11 +769,7 @@ function tx_function {
 
     echo
     echo "Starting transmission in $TXMODE mode, FEC $VIDEO_BLOCKS/$VIDEO_FECS/$VIDEO_BLOCKLENGTH: $WIDTH x $HEIGHT $FPS fps, video bitrate: $BITRATE_KBIT kBit/s, Keyframerate: $KEYFRAMERATE"
-    if [ "$CAPTURE_PROGRAM" == "raspivid"]; then
-        nice -n -9 raspivid -w $WIDTH -h $HEIGHT -fps $FPS -b $BITRATE -g $KEYFRAMERATE -t 0 $EXTRAPARAMS -o - | nice -n -9 /root/wifibroadcast/tx_rawsock -p 0 -b $VIDEO_BLOCKS -r $VIDEO_FECS -f $VIDEO_BLOCKLENGTH -t $VIDEO_FRAMETYPE -d $VIDEO_WIFI_BITRATE -y 0 $NICS
-    else
-        /root/FFmpeg/ffmpeg -r 30 -copytb 0 -f v4l2 -vcodec h264 -i /dev/video0 -vcodec h264 -f h264 -r 10 -g 10 -b:v 2000k - | /root/psips/psips | nice -n -9 /root/wifibroadcast/tx_rawsock -p 0 -b $VIDEO_BLOCKS -r $VIDEO_FECS -f $VIDEO_BLOCKLENGTH -t $VIDEO_FRAMETYPE -d $VIDEO_WIFI_BITRATE -y 0 $NICS
-    fi
+    nice -n -9 raspivid -w $WIDTH -h $HEIGHT -fps $FPS -b $BITRATE -g $KEYFRAMERATE -t 0 $EXTRAPARAMS -o - | nice -n -9 /root/wifibroadcast/tx_rawsock -p 0 -b $VIDEO_BLOCKS -r $VIDEO_FECS -f $VIDEO_BLOCKLENGTH -t $VIDEO_FRAMETYPE -d $VIDEO_WIFI_BITRATE -y 0 $NICS
 
 #    v4l2-ctl -d /dev/video0 --set-fmt-video=width=1280,height=720,pixelformat='H264' -p 48 --set-ctrl video_bitrate=7000000,repeat_sequence_header=1,h264_i_frame_period=7,white_balance_auto_preset=5
 #    nice -n -9 cat /dev/video0 | /root/wifibroadcast/tx_rawsock -p 0 -b $VIDEO_BLOCKS -r $VIDEO_FECS -f $VIDEO_BLOCKLENGTH -t $VIDEO_FRAMETYPE -d $VIDEO_WIFI_BITRATE -y 0 $NICS
@@ -836,7 +835,11 @@ function rx_function {
     killall wbc_status > /dev/null 2>&1
 
     sleep 1
-    detect_nics
+
+    if [ "$UDP" != "1"]; then
+    	detect_nics
+	fi
+
     echo
 
     sleep 0.5
@@ -970,7 +973,13 @@ function rx_function {
 	NICS=`ls /sys/class/net/ | nice grep -v eth0 | nice grep -v lo | nice grep -v usb | nice grep -v intwifi | nice grep -v wlan | nice grep -v relay | nice grep -v wifihotspot`
 
 	tmessage "Starting RX ... (FEC: $VIDEO_BLOCKS/$VIDEO_FECS/$VIDEO_BLOCKLENGTH)"
-	ionice -c 1 -n 3 /root/wifibroadcast/rx -p 0 -d 1 -b $VIDEO_BLOCKS -r $VIDEO_FECS -f $VIDEO_BLOCKLENGTH $NICS | ionice -c 1 -n 4 nice -n -10 tee >(ionice -c 1 -n 4 nice -n -10 /root/wifibroadcast_misc/ftee /root/videofifo2 > /dev/null 2>&1) >(ionice -c 1 nice -n -10 /root/wifibroadcast_misc/ftee /root/videofifo4 > /dev/null 2>&1) >(ionice -c 3 nice /root/wifibroadcast_misc/ftee /root/videofifo3 > /dev/null 2>&1) | ionice -c 1 -n 4 nice -n -10 /root/wifibroadcast_misc/ftee /root/videofifo1 > /dev/null 2>&1
+
+	if [ "$UDP" != "1"]; then
+    	UDP_FLAGS="-u"
+    else
+    	UDP_FLAGS="-p"
+	fi
+	ionice -c 1 -n 3 /root/wifibroadcast/rx -p 0 -d 1 -b $VIDEO_BLOCKS -r $VIDEO_FECS -f $VIDEO_BLOCKLENGTH -s $UDP_SERVER $UDP_FLAGS $UDP_PORT $NICS | ionice -c 1 -n 4 nice -n -10 tee >(ionice -c 1 -n 4 nice -n -10 /root/wifibroadcast_misc/ftee /root/videofifo2 > /dev/null 2>&1) >(ionice -c 1 nice -n -10 /root/wifibroadcast_misc/ftee /root/videofifo4 > /dev/null 2>&1) >(ionice -c 3 nice /root/wifibroadcast_misc/ftee /root/videofifo3 > /dev/null 2>&1) | ionice -c 1 -n 4 nice -n -10 /root/wifibroadcast_misc/ftee /root/videofifo1 > /dev/null 2>&1
 
 	RX_EXITSTATUS=${PIPESTATUS[0]}
 	check_exitstatus $RX_EXITSTATUS
@@ -1160,7 +1169,7 @@ function mspdownlinktx_function {
     VIDEOTXRUNNING=0
     while [ $VIDEOTXRUNNING -ne 1 ]; do
 	sleep 0.5
-	VIDEOTXRUNNING=`pidof $CAPTURE_PROGRAM | wc -w`
+	VIDEOTXRUNNING=`pidof raspivid | wc -w`
 	echo -n "."
     done
     echo
@@ -1834,12 +1843,6 @@ TTY=`tty`
 # only do this on one tty so that we don't run vcgencmd multiple times (which may make it hang)
 if [ "$TTY" == "/dev/tty1" ]; then
     CAM=`/usr/bin/vcgencmd get_camera | nice grep -c detected=1`
-    CAPTURE_PROGRAM=raspivid
-    # check to see if there's a v4l2 camera connected
-    if [ "$CAM" == "0" ]; then
-        CAM=`ls -l /dev/video0 | wc -l`
-        CAPTURE_PROGRAM=ffmpeg
-    fi
     if [ "$CAM" == "0" ]; then # if we are RX ...
 	echo  "0" > /tmp/cam
     else # else we are TX ...
