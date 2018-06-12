@@ -636,12 +636,14 @@ int main(int argc, char *argv[]) {
 				param_packet_length = atoi(optarg); // NOLINT
 				break;
 			case 's':
-			    printf("hello 5");
+			    printf("hello 5\n");
 				strncpy(remote_address, optarg, MAX_ADDRESS_LENGTH);
-				printf("hey 6");
+				printf("hey 6\n");
 				break;
 			case 'n':
-				param_udp_remote_port = atoi(optarg); // NOLINT
+                printf("hello 9\n");
+                param_udp_remote_port = atoi(optarg); // NOLINT
+                printf("hey 9\n");
                 break;
 		    case 'u':
 		        param_udp_remote_port = atoi(optarg); // NOLINT
@@ -670,21 +672,21 @@ int main(int argc, char *argv[]) {
 	FILE* procfile;
 
 	if (param_udp_remote_port > 0 && strlen(remote_address) != 0) {
-	    printf("1");
+	    printf("1\n");
         session = start_session(remote_address, param_udp_remote_port, 0);
 	} else if(param_udp_receive_port > 0 && strlen(remote_address) != 0) {
-	    printf("2");
+	    printf("2\n");
 	    session = start_session(remote_address, param_udp_receive_port, 1);
 	    char *buffer = create_buffer();
         struct RxStruct rxStruct;
         while (1) {
-            printf("HI");
+            printf("HI\n");
             receive_data(session, buffer, MAX_BUFFER_LEN);
-            printf("TEST");
+            printf("TEST\n");
 	        read_buffer(buffer, &rxStruct);
-	        printf("COOL");
+	        printf("COOL\n");
 	        block_buffer_list = create_block_buffer_list();
-	        printf("HEY");
+	        printf("HEY\n");
 	        process_payload(rxStruct.data, rxStruct.data_len, rxStruct.crc_correct, block_buffer_list, 0);
 	    }
 	    free_buffer(&buffer);
