@@ -766,7 +766,11 @@ function tx_function {
 
     echo
     echo "Starting transmission in $TXMODE mode, FEC $VIDEO_BLOCKS/$VIDEO_FECS/$VIDEO_BLOCKLENGTH: $WIDTH x $HEIGHT $FPS fps, video bitrate: $BITRATE_KBIT kBit/s, Keyframerate: $KEYFRAMERATE"
-    nice -n -9 raspivid -w $WIDTH -h $HEIGHT -fps $FPS -b $BITRATE -g $KEYFRAMERATE -t 0 $EXTRAPARAMS -o - | nice -n -9 /root/wifibroadcast/tx_rawsock -p 0 -b $VIDEO_BLOCKS -r $VIDEO_FECS -f $VIDEO_BLOCKLENGTH -t $VIDEO_FRAMETYPE -d $VIDEO_WIFI_BITRATE -y 0 $NICS
+    if [ "$CAPTURE_PROGRAM" == "raspivid"]; then
+        nice -n -9 raspivid -w $WIDTH -h $HEIGHT -fps $FPS -b $BITRATE -g $KEYFRAMERATE -t 0 $EXTRAPARAMS -o - | nice -n -9 /root/wifibroadcast/tx_rawsock -p 0 -b $VIDEO_BLOCKS -r $VIDEO_FECS -f $VIDEO_BLOCKLENGTH -t $VIDEO_FRAMETYPE -d $VIDEO_WIFI_BITRATE -y 0 $NICS
+    else
+        nice -n -9 /root/FFmpeg/ffmpeg -r 30 -copytb 0 -f v4l2 -vcodec h264 -i /dev/video0 -vcodec h264 -f h264 -r 5 -b:v 2000k - | nice -n -9 /root/wifibroadcast/tx_rawsock -p 0 -b $VIDEO_BLOCKS -r $VIDEO_FECS -f $VIDEO_BLOCKLENGTH -t $VIDEO_FRAMETYPE -d $VIDEO_WIFI_BITRATE -y 0 $NICS
+    fi
 
 #    v4l2-ctl -d /dev/video0 --set-fmt-video=width=1280,height=720,pixelformat='H264' -p 48 --set-ctrl video_bitrate=7000000,repeat_sequence_header=1,h264_i_frame_period=7,white_balance_auto_preset=5
 #    nice -n -9 cat /dev/video0 | /root/wifibroadcast/tx_rawsock -p 0 -b $VIDEO_BLOCKS -r $VIDEO_FECS -f $VIDEO_BLOCKLENGTH -t $VIDEO_FRAMETYPE -d $VIDEO_WIFI_BITRATE -y 0 $NICS
@@ -1156,7 +1160,7 @@ function mspdownlinktx_function {
     VIDEOTXRUNNING=0
     while [ $VIDEOTXRUNNING -ne 1 ]; do
 	sleep 0.5
-	VIDEOTXRUNNING=`pidof raspivid | wc -w`
+	VIDEOTXRUNNING=`pidof $CAPTURE_PROGRAM | wc -w`
 	echo -n "."
     done
     echo
@@ -1830,6 +1834,10 @@ TTY=`tty`
 # only do this on one tty so that we don't run vcgencmd multiple times (which may make it hang)
 if [ "$TTY" == "/dev/tty1" ]; then
     CAM=`/usr/bin/vcgencmd get_camera | nice grep -c detected=1`
+    # check to see if there's a v4l2 camera connected
+    if [ "$CAM" == "0" ]; then
+        CAM=`ls -l /dev/video0 | wc -l`
+    fi
     if [ "$CAM" == "0" ]; then # if we are RX ...
 	echo  "0" > /tmp/cam
     else # else we are TX ...
