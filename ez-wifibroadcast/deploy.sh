@@ -1,4 +1,4 @@
-#!bin/bash
+#!/bin/bash
 
 echo "Fetching changes from repo"
 
