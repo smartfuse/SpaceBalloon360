@@ -12,7 +12,7 @@ udp_test_sender: udp/test/udp_test_sender.o udp/test/udp_test_util.o udp/udp_cli
 udp_test_receiver: udp/test/udp_test_receiver.o udp/test/udp_test_util.o udp/udp_client.o
 	gcc -o $@ $^
 
-rx: rx.o lib.o radiotap.o fec.o
+rx: rx.o lib.o radiotap.o fec.o udp/rx_udp_util.o udp/udp_client.o
 	gcc -o $@ $^ -lrt -lpcap
 
 rcrx: rcrx.o lib.o radiotap.o

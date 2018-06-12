@@ -22,7 +22,7 @@
 #include "udp/udp_client.h"
 #include <time.h>
 #include <sys/resource.h>
-#include <udp/rx_udp_util.h>
+#include "udp/rx_udp_util.h"
 
 #define MAX_PACKET_LENGTH 4192
 #define MAX_USER_PACKET_LENGTH 1450
