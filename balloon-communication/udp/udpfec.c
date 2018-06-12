@@ -1,19 +1,3 @@
-// (c)2015 befinitiv
-
-/*
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; version 2.
- *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
- *
- *   You should have received a copy of the GNU General Public License along
- *   with this program; if not, write to the Free Software Foundation, Inc.,
- *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
- */
 
 #include "fec.h"
 #include "lib.h"
@@ -73,7 +57,6 @@ usage(void)
 	    "-d <blocks> Number of transmissions blocks that are buffered (default 1). This is needed in case of diversity if one\n"
 	    "            adapter delivers data faster than the other. Note that this increases latency.\n"
 	    "-t <type>   Packet type to receive. 0 = DATA short, 1 = DATA standard, 2 = CTS, 3 = RTS, 4 = ACK, 5 = Beacon\n"
-        "-s ipaddr   where to send received data to, should be a udp server listening on the other side\n"
 	    "\n"
 	    "Example:\n"
 	    "  rx -b 8 -r 4 -f 1024 -t 1 wlan0 | cat /dev/null  (receive standard DATA frames on wlan0 and send payload to /dev/null)\n"
@@ -93,83 +76,6 @@ typedef struct {
 } block_buffer_t;
 
 
-void open_and_configure_interface(const char *name, int port, monitor_interface_t *interface) {
-	struct bpf_program bpfprogram;
-	char szProgram[512];
-	char szErrbuf[PCAP_ERRBUF_SIZE];
-
-	// open the interface in pcap
-	szErrbuf[0] = '\0';
-
-	interface->ppcap = pcap_open_live(name, 1600, 0, -1, szErrbuf);
-	if (interface->ppcap == NULL) {
-		fprintf(stderr, "Unable to open %s: %s\n", name, szErrbuf);
-		exit(1);
-	}
-	
-	if(pcap_setnonblock(interface->ppcap, 1, szErrbuf) < 0) {
-		fprintf(stderr, "Error setting %s to nonblocking mode: %s\n", name, szErrbuf);
-	}
-
-	int nLinkEncap = pcap_datalink(interface->ppcap);
-
-	if (nLinkEncap == DLT_IEEE802_11_RADIO) {
-		switch (param_packet_type) {
-		    case 0: // short DATA frame (for Ralink Video, telemetry and rssi)
-			interface->n80211HeaderLength = 0x06; // only use the first 6 bytes as header, 2bytes frametype, 2bytes duration, 1st byte of mac FF, 2nd byte of mac param_portnumber
-			sprintf(szProgram, "ether[0x00:2] == 0x08bf && ether[0x04:2] == 0xff%.2x", port); // match on frametype, 1st byte of mac (ff) and portnumber
-			break;
-		    case 1: // standard DATA frame
-			interface->n80211HeaderLength = 0x18; // length of standard IEEE802.11 data frame header is 24 bytes = 0x18
-			sprintf(szProgram, "ether[0x00:2] == 0x08bf && ether[0x04:2] == 0xff%.2x", port); // match on frametype, 1st byte of mac (ff) and portnumber
-			break;
-		    case 2: // CTS frame
-			interface->n80211HeaderLength = 0x06; // only use the first 6 bytes as header, 2bytes frametype, 2bytes duration, 1st byte of mac FF, 2nd byte of mac param_portnumber
-			sprintf(szProgram, "ether[0x00:2] == 0xc400 && ether[0x04:2] == 0xff%.2x", port); // match on frametype, 1st byte of mac (ff) and portnumber
-			break;
-		    case 3: // RTS frame
-			interface->n80211HeaderLength = 0x06; // only use the first 6 bytes as header, 2bytes frametype, 2bytes duration, 1st byte of mac FF, 2nd byte of mac param_portnumber
-			sprintf(szProgram, "ether[0x00:2] == 0xb400 && ether[0x04:2] == 0xff%.2x", port); // match on frametype, 1st byte of mac (ff) and portnumber
-			break;
-		    case 4: // ACK frame
-			interface->n80211HeaderLength = 0x06; // only use the first 6 bytes as header, 2bytes frametype, 2bytes duration, 1st byte of mac FF, 2nd byte of mac param_portnumber
-			sprintf(szProgram, "ether[0x00:2] == 0xd400 && ether[0x04:2] == 0xff%.2x", port); // match on frametype, 1st byte of mac (ff) and portnumber
-			break;
-		    case 5: // Beacon frame
-			interface->n80211HeaderLength = 0x18; // only use the first 6 bytes as header, 2bytes frametype, 2bytes duration, 1st byte of mac FF, 2nd byte of mac param_portnumber
-			sprintf(szProgram, "ether[0x00:2] == 0x8000 && ether[0x04:2] == 0xff%.2x", port); // match on frametype, 1st byte of mac (ff) and portnumber
-			break;
-
-		    case 6: // both standard DATA frame and Beacon frame
-			interface->n80211HeaderLength = 0x18; // length of standard IEEE802.11 data frame header is 24 bytes = 0x18
-			sprintf(szProgram, "(ether[0x00:2] == 0x08bf || ether[0x00:2] == 0x8000) && ether[0x04:2] == 0xff%.2x", port); // match on frametype, 1st byte of mac (ff) and portnumber
-			break;
-
-		    default:
-			fprintf(stderr, "ERROR: Wrong or no frame type specified (see -t parameter)\n");
-			break;
-		}
-
-	} else {
-		fprintf(stderr, "ERROR: unknown encapsulation on %s! check if monitor mode is supported and enabled\n", name);
-		exit(1);
-	}
-
-	if (pcap_compile(interface->ppcap, &bpfprogram, szProgram, 1, 0) == -1) {
-		puts(szProgram);
-		puts(pcap_geterr(interface->ppcap));
-		exit(1);
-	} else {
-		if (pcap_setfilter(interface->ppcap, &bpfprogram) == -1) {
-			fprintf(stderr, "%s\n", szProgram);
-			fprintf(stderr, "%s\n", pcap_geterr(interface->ppcap));
-		} else {
-		}
-		pcap_freecode(&bpfprogram);
-	}
-
-	interface->selectable_fd = pcap_get_selectable_fd(interface->ppcap);
-}
 
 
 void block_buffer_list_reset(block_buffer_t *block_buffer_list, size_t block_buffer_list_len, int block_buffer_len) {
@@ -547,53 +453,7 @@ void process_packet(monitor_interface_t *interface, block_buffer_t *block_buffer
 		process_payload(pu8Payload, bytes, checksum_correct, block_buffer_list, adapter_no);
 }
 
-void status_memory_init(wifibroadcast_rx_status_t *s) {
-	s->received_block_cnt = 0;
-	s->damaged_block_cnt = 0;
-	s->received_packet_cnt = 0;
-	s->lost_packet_cnt = 0;
-	s->tx_restart_cnt = 0;
-	s->wifi_adapter_cnt = 0;
 
-	int i;
-	for(i=0; i<MAX_PENUMBRA_INTERFACES; ++i) {
-		s->adapter[i].received_packet_cnt = 0;
-		s->adapter[i].wrong_crc_cnt = 0;
-		s->adapter[i].current_signal_dbm = 0;
-		s->adapter[i].type = 2; // set to 2 to see if it didnt get set later ...
-	}
-}
-
-
-wifibroadcast_rx_status_t *status_memory_open(void) {
-	char buf[128];
-	int fd;
-	
-	sprintf(buf, "/wifibroadcast_rx_status_%d", param_port);
-	fd = shm_open(buf, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
-
-	if(fd < 0) {
-		perror("shm_open");
-		exit(1);
-	}
-
-	if (ftruncate(fd, sizeof(wifibroadcast_rx_status_t)) == -1) {
-		perror("ftruncate");
-		exit(1);
-	}
-
-	void *retval = mmap(NULL, sizeof(wifibroadcast_rx_status_t), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-	if (retval == MAP_FAILED) {
-		perror("mmap");
-		exit(1);
-	}
-	
-	wifibroadcast_rx_status_t *tretval = (wifibroadcast_rx_status_t*)retval;
-	status_memory_init(tretval);
-	
-	return tretval;
-
-}
 
 int main(int argc, char *argv[])
 {
@@ -607,64 +467,6 @@ int main(int argc, char *argv[])
 	block_buffer_t *block_buffer_list;
 
 	int c;
-    int nOptionIndex;
-    static const struct option optiona[] = {
-            { "help", no_argument, &flagHelp, 1 },
-            { 0, 0, 0, 0 }
-    };
-
-	while ((c = getopt_long(argc, argv, "h:p:b:r:d:f:t:s:n:u", optiona, &nOptionIndex) != -1)) {
-
-		switch (c) {
-            case 'h': // help
-                usage();
-                break;
-
-            case 'p': //port
-                param_port = atoi(optarg);
-                break;
-
-            case 'b':
-                param_data_packets_per_block = atoi(optarg);
-                break;
-
-            case 'r':
-                param_fec_packets_per_block = atoi(optarg);
-                break;
-
-            case 'd':
-                param_block_buffers = atoi(optarg);
-                break;
-
-            case 'f': // MTU
-                param_packet_length = atoi(optarg);
-                break;
-
-            case 't': // packet type
-                param_packet_type = atoi(optarg);
-                break;
-
-		    case 's':
-		        strncpy(remote_address, optarg, MAX_ADDRESS_LENGTH);
-		        break;
-
-		    case 'n':
-		        remote_port = atoi(optarg);
-		        break;
-
-		    case 'u':
-		        receive_port = atoi(optarg);
-		        break;
-
-            default:
-                fprintf(stderr, "unknown switch %c\n", c);
-                usage();
-                break;
-		}
-	}
-
-	if (optind >= argc)
-		usage();
 	
 	
 
@@ -685,48 +487,9 @@ int main(int argc, char *argv[])
 	char path[45], line[100];
 	FILE* procfile;
 
-	while(x < argc && num_interfaces < MAX_PENUMBRA_INTERFACES) {
-		open_and_configure_interface(argv[x], param_port, interfaces + num_interfaces);
-
-		snprintf(path, 45, "/sys/class/net/%s/device/uevent", argv[x]);
-		procfile = fopen(path, "r");
-		if(!procfile) {fprintf(stderr,"ERROR: opening %s failed!\n", path); return 0;}
-		fgets(line, 100, procfile); // read the first line
-		fgets(line, 100, procfile); // read the 2nd line
-		if(strncmp(line, "DRIVER=ath9k_htc", 16) == 0) { // it's an atheros card
-//		    fprintf(stderr, "Atheros\n");
-		    rx_status->adapter[j].type = (int8_t)(0);
-		} else {
-//		    fprintf(stderr, "Ralink\n");
-		    rx_status->adapter[j].type = (int8_t)(1);
-		}
-		fclose(procfile);
-
-		++num_interfaces;
-		++x;
-		++j;
-		usleep(10000); // wait a bit between configuring interfaces to reduce Atheros and Pi USB flakiness
-	}
-
-	rx_status->wifi_adapter_cnt = num_interfaces;
 
 
-	//block buffers contain both the block_num as well as packet buffers for a block.
-	block_buffer_list = malloc(sizeof(block_buffer_t) * param_block_buffers);
-	for(i=0; i<param_block_buffers; ++i)
-	{
-    	    block_buffer_list[i].block_num = -1;
-    	    block_buffer_list[i].packet_buffer_list = lib_alloc_packet_buffer_list(param_data_packets_per_block+param_fec_packets_per_block, MAX_PACKET_LENGTH);
-	}
 
-
-    if (remote_address) {
-        session = start_session(remote_address, remote_port, 0);
-        if (!session) {
-            fprintf(stderr, "whoops no udp bits\n");
-            return 0;
-        }
-    }
 
 	for(;;)
 	{ 
