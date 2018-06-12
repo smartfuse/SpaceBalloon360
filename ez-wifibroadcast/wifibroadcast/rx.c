@@ -685,7 +685,7 @@ int main(int argc, char *argv[]) {
 	char path[45], line[100];
 	FILE* procfile;
 
-    printf("hey 103");
+    printf("hey 103\n");
 
     if (param_udp_remote_port > 0 && strlen(remote_address) != 0) {
 	    printf("1\n");
@@ -708,7 +708,9 @@ int main(int argc, char *argv[]) {
 	    free_buffer(&buffer);
 	}
 
-	while(x < argc && num_interfaces < MAX_PENUMBRA_INTERFACES) {
+    printf("hey 104\n");
+
+    while(x < argc && num_interfaces < MAX_PENUMBRA_INTERFACES) {
 		open_and_configure_interface(argv[x], param_port, interfaces + num_interfaces);
 
 		snprintf(path, 45, "/sys/class/net/%s/device/uevent", argv[x]);
@@ -731,9 +733,11 @@ int main(int argc, char *argv[]) {
 		usleep(10000); // wait a bit between configuring interfaces to reduce Atheros and Pi USB flakiness
 	}
 
-	rx_status->wifi_adapter_cnt = num_interfaces;
+    printf("hey 105\n");
 
-    create_block_buffer_list();
+    rx_status->wifi_adapter_cnt = num_interfaces;
+
+    block_buffer_list = create_block_buffer_list();
 
 	for(;;) {
 
