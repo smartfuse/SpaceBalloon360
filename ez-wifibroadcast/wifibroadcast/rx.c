@@ -588,11 +588,13 @@ wifibroadcast_rx_status_t *status_memory_open(void) {
 block_buffer_t *create_block_buffer_list() {
     //block buffers contain both the block_num as well as packet buffers for a block.
     block_buffer_t * block_buffer_list = malloc(sizeof(block_buffer_t) * param_block_buffers);
-    for(int i=0; i<param_block_buffers; ++i)
+    int i;
+    for(i=0; i<param_block_buffers; ++i)
     {
         block_buffer_list[i].block_num = -1;
         block_buffer_list[i].packet_buffer_list = lib_alloc_packet_buffer_list(param_data_packets_per_block+param_fec_packets_per_block, MAX_PACKET_LENGTH);
     }
+    return block_buffer_list;
 }
 
 int main(int argc, char *argv[]) {
