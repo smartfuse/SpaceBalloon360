@@ -195,6 +195,7 @@ void process_payload(uint8_t *data, size_t data_len, int crc_correct, block_buff
 //	fprintf(stderr,"lu[%d]: %lld\n",adapter_no,rx_status->adapter[adapter_no].last_update);
 //	rx_status->adapter[adapter_no].last_update = current_timestamp();
 
+    printf("%d %d", data_len, crc_correct);
     wifi_packet_header_t *wph;
     int block_num;
     int packet_num;
