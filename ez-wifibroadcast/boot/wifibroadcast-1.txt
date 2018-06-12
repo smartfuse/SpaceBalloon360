@@ -55,7 +55,7 @@ DATARATE=1
 #
 #
 # Choose between 30, 40, 48, 59.9
-FPS=60
+FPS=30
 #
 #
 # FEC SETTINGS
@@ -122,9 +122,6 @@ KEYFRAMERATE=5
 #
 # Set additional raspivid parameters here
 EXTRAPARAMS="-cd H264 -n -fl -ih -pf high -if both -ex sports -mm average -awb horizon"
-#
-#
-CAPTURE_PROGRAM=ffmpeg
 #
 #
 # Serial port and baudrate (19200 is minimum) to use for the R/C connection between air Pi and flight control
