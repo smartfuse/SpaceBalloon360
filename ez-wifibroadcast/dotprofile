@@ -1834,9 +1834,11 @@ TTY=`tty`
 # only do this on one tty so that we don't run vcgencmd multiple times (which may make it hang)
 if [ "$TTY" == "/dev/tty1" ]; then
     CAM=`/usr/bin/vcgencmd get_camera | nice grep -c detected=1`
+    CAPTURE_PROGRAM=raspivid
     # check to see if there's a v4l2 camera connected
     if [ "$CAM" == "0" ]; then
         CAM=`ls -l /dev/video0 | wc -l`
+        CAPTURE_PROGRAM=ffmpeg
     fi
     if [ "$CAM" == "0" ]; then # if we are RX ...
 	echo  "0" > /tmp/cam
