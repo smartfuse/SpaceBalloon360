@@ -636,7 +636,7 @@ int main(int argc, char *argv[]) {
                 param_packet_length = atoi(optarg); // NOLINT
 				break;
 			case 's':
-				strncpy(remote_address, optarg, MAX_ADDRESS_LENGTH);
+				strncpy(remote_address, optarg, strlen(optarg));
 				break;
 			case 'n':
                 param_udp_remote_port = atoi(optarg); // NOLINT
@@ -666,6 +666,7 @@ int main(int argc, char *argv[]) {
 	char path[45], line[100];
 	FILE* procfile;
 
+	printf("%d %d %lu %d %s\n", param_udp_remote_port, param_udp_receive_port, strlen(remote_address), remote_address);
     if (param_udp_remote_port > 0 && strlen(remote_address) != 0) {
         session = start_session(remote_address, param_udp_remote_port, 0);
 	} else if(param_udp_receive_port > 0 && strlen(remote_address) != 0) {
