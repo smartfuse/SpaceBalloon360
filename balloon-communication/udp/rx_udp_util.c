@@ -35,7 +35,7 @@ void read_buffer(char *buffer, struct RxStruct *rx_struct) {
 
     // Unpack data length field
     rx_struct->data_len = *((size_t *) buffer);
-    buffer += sizeof(size_t)
+    buffer += sizeof(size_t);
 
     // Zero out data field
     memset(rx_struct->data, 0, MAX_PACKET_LEN);

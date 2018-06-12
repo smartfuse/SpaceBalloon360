@@ -33,7 +33,9 @@ add_executable(wifibroadcast
 add_executable(udp_test_receiver
         udp/test/udp_test_receiver.c
         udp/test/udp_test_util.c
-        udp/udp_client.c udp/rx_udp_util.c)
+        udp/udp_client.c
+        #udp/rx_udp_util.c
+        )
 
 add_executable(udp_test_sender
         udp/test/udp_test_sender.c
