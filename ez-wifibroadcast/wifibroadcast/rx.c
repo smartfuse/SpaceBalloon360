@@ -668,16 +668,13 @@ int main(int argc, char *argv[]) {
 	FILE* procfile;
 
 	if (param_udp_remote_port > 0 && strlen(remote_address) != 0) {
-	    session = start_session(remote_address, param_udp_remote_port, 0);
+        session = start_session(remote_address, param_udp_remote_port, 0);
 	} else if(param_udp_receive_port > 0 && strlen(remote_address) != 0) {
 	    session = start_session(remote_address, param_udp_receive_port, 1);
 	    char *buffer = create_buffer();
 	    struct RxStruct rxStruct;
-        ssize_t datalen;
-        while ((datalen = receive_data(session, buffer, MAX_BUFFER_LEN)) >= 0) {
-	        if (datalen == 0) {
-	            continue;
-	        }
+        while (1) {
+            receive_data(session, buffer, MAX_BUFFER_LEN);
 	        read_buffer(buffer, &rxStruct);
 	        block_buffer_list = create_block_buffer_list();
 	        process_payload(rxStruct.data, rxStruct.data_len, rxStruct.crc_correct, block_buffer_list, 0);
