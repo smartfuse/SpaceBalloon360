@@ -15,13 +15,13 @@ cp -R dotprofile ~/.profile
 if [ "$1" == "transmit" ] || [ "$1" == "receive" ]; then
 	echo $1
 	rm -rf /boot/wifibroadcast-1.txt
-	cp wifibroadcast-1.txt/wifibroadcast-1.txt /boot/wifibroadcast-1.txt
+	cp boot/wifibroadcast-1.txt /boot/wifibroadcast-1.txt
 fi
 
 if [ "$1" == "receive_udp" ]; then
 	echo $1
 	rm -rf /boot/wifibroadcast-1.txt
-	cp wifibroadcast-1.txt/wifibroadcast-udp.txt /boot/wifibroadcast-1.txt
+	cp boot/wifibroadcast-udp.txt /boot/wifibroadcast-1.txt
 fi
 
 echo "Done"
