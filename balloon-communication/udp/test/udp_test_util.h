@@ -8,7 +8,7 @@
 
 struct TestStruct {
     float decimal;
-    size_t string_len;
+    unsigned int string_len;
     char string[MAX_STRING_LEN];
 } TestStruct;
 
