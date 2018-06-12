@@ -617,7 +617,7 @@ int main(int argc, char *argv[]) {
 	};
 
 	printf("HELLO\n");
-	while ((c = getopt_long(argc, argv, "h:p:b:r:d:f:s:n:u:", optiona, &nOptionIndex) != -1)) {
+	while ((c = getopt_long(argc, argv, "h:p:b:r:d:f:s:n:u:", optiona, &nOptionIndex)) != -1) {
 		switch (c) {
 			case 'h': // help
 				usage();
@@ -660,10 +660,14 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
+	printf("hey 101\n");
+
 	if (optind >= argc)
 		usage();
 
-	if(param_packet_length > MAX_USER_PACKET_LENGTH) {
+    printf("hey 102\n");
+
+    if(param_packet_length > MAX_USER_PACKET_LENGTH) {
 		printf("Packet length is limited to %d bytes (you requested %d bytes)\n", MAX_USER_PACKET_LENGTH, param_packet_length);
 		return (1);
 	}
@@ -678,7 +682,9 @@ int main(int argc, char *argv[]) {
 	char path[45], line[100];
 	FILE* procfile;
 
-	if (param_udp_remote_port > 0 && strlen(remote_address) != 0) {
+    printf("hey 103");
+
+    if (param_udp_remote_port > 0 && strlen(remote_address) != 0) {
 	    printf("1\n");
         session = start_session(remote_address, param_udp_remote_port, 0);
 	} else if(param_udp_receive_port > 0 && strlen(remote_address) != 0) {
