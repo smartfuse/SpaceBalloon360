@@ -17,9 +17,9 @@ int main(int argc, char **argv) {
         test_struct.string_len = strlen(test_struct.string);
         test_struct.decimal = 0.5f * i;
         printf("sending ");
-        print_struct(test_struct);
+        print_test_struct(test_struct);
 
-        size_t data_size = write_buffer(buffer, test_struct);
+        size_t data_size = write_test_buffer(buffer, test_struct);
         send_data(session, buffer, data_size);
 
         sleep(1);

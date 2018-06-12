@@ -15,8 +15,8 @@ struct TestStruct {
 char *create_buffer();
 void free_buffer(char **buffer_ref);
 
-size_t write_buffer(char *buffer, struct TestStruct test_struct);
-void read_buffer(char *buffer, struct TestStruct *test_struct);
-void print_struct(struct TestStruct test_struct);
+size_t write_test_buffer(char *buffer, struct TestStruct test_struct);
+void read_test_buffer(char *buffer, struct TestStruct *test_struct);
+void print_test_struct(struct TestStruct test_struct);
 
 #endif
