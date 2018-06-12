@@ -616,68 +616,49 @@ int main(int argc, char *argv[]) {
 			{ 0, 0, 0, 0 }
 	};
 
-	printf("HELLO\n");
 	while ((c = getopt_long(argc, argv, "h:p:b:r:d:f:s:n:u:", optiona, &nOptionIndex)) != -1) {
 		switch (c) {
 			case 'h': // help
 				usage();
 			case 'p': // port
-                printf("world 22\n");
                 param_port = atoi(optarg); // NOLINT
 				break;
 			case 'b': // data blocks
-                printf("world 23\n");
                 param_data_packets_per_block = atoi(optarg); // NOLINT
 				break;
 			case 'r': // fec blocks
-                printf("world 24\n");
                 param_fec_packets_per_block = atoi(optarg); // NOLINT
 				break;
 			case 'd': // block buffers
-                printf("world 25\n");
                 param_block_buffers = atoi(optarg); // NOLINT
 				break;
 			case 'f': // packet size
-                printf("world 26\n");
                 param_packet_length = atoi(optarg); // NOLINT
 				break;
 			case 's':
-			    printf("world 27\n");
 				strncpy(remote_address, optarg, MAX_ADDRESS_LENGTH);
-				printf("hey 6\n");
 				break;
 			case 'n':
-                printf("world 28\n");
                 param_udp_remote_port = atoi(optarg); // NOLINT
-                printf("hey 9\n");
                 break;
 		    case 'u':
-                printf("world 29\n");
-                param_udp_remote_port = atoi(optarg); // NOLINT
+                param_udp_receive_port = atoi(optarg); // NOLINT
 		        break;
 			default:
 				break;
 		}
 	}
 
-	printf("hey 101\n");
-
 	if (optind >= argc)
 		usage();
-
-    printf("hey 102\n");
 
     if(param_packet_length > MAX_USER_PACKET_LENGTH) {
 		printf("Packet length is limited to %d bytes (you requested %d bytes)\n", MAX_USER_PACKET_LENGTH, param_packet_length);
 		return (1);
 	}
 
-	printf("hey 102.25\n");
 	fec_init();
-    printf("hey 102.35\n");
-
 	rx_status = status_memory_open();
-    printf("hey 102.45\n");
 
 	int j = 0;
 	int x = optind;
@@ -685,30 +666,20 @@ int main(int argc, char *argv[]) {
 	char path[45], line[100];
 	FILE* procfile;
 
-    printf("hey 103\n");
-
     if (param_udp_remote_port > 0 && strlen(remote_address) != 0) {
-	    printf("1\n");
         session = start_session(remote_address, param_udp_remote_port, 0);
 	} else if(param_udp_receive_port > 0 && strlen(remote_address) != 0) {
-	    printf("2\n");
 	    session = start_session(remote_address, param_udp_receive_port, 1);
 	    char *buffer = create_buffer();
         struct RxStruct rxStruct;
         while (1) {
-            printf("HI\n");
             receive_data(session, buffer, MAX_BUFFER_LEN);
-            printf("TEST\n");
 	        read_buffer(buffer, &rxStruct);
-	        printf("COOL\n");
 	        block_buffer_list = create_block_buffer_list();
-	        printf("HEY\n");
 	        process_payload(rxStruct.data, rxStruct.data_len, rxStruct.crc_correct, block_buffer_list, 0);
 	    }
 	    free_buffer(&buffer);
 	}
-
-    printf("hey 104\n");
 
     while(x < argc && num_interfaces < MAX_PENUMBRA_INTERFACES) {
 		open_and_configure_interface(argv[x], param_port, interfaces + num_interfaces);
@@ -732,8 +703,6 @@ int main(int argc, char *argv[]) {
 		++j;
 		usleep(10000); // wait a bit between configuring interfaces to reduce Atheros and Pi USB flakiness
 	}
-
-    printf("hey 105\n");
 
     rx_status->wifi_adapter_cnt = num_interfaces;
 
