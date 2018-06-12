@@ -686,9 +686,10 @@ int main(int argc, char *argv[])
 	FILE* procfile;
 
 	while(x < argc && num_interfaces < MAX_PENUMBRA_INTERFACES) {
-		open_and_configure_interface(argv[x], param_port, interfaces + num_interfaces);
+        char* wlandev = "10feed229ec5"/*argv[x]*/;
+		open_and_configure_interface(wlandev, param_port, interfaces + num_interfaces);
 
-		snprintf(path, 45, "/sys/class/net/%s/device/uevent", argv[x]);
+		snprintf(path, 45, "/sys/class/net/%s/device/uevent", wlandev);
 		procfile = fopen(path, "r");
 		if(!procfile) {fprintf(stderr,"ERROR: opening %s failed!\n", path); return 0;}
 		fgets(line, 100, procfile); // read the first line
@@ -720,7 +721,8 @@ int main(int argc, char *argv[])
 	}
 
 
-    if (remote_address) {
+    fprintf(stderr, "remote udp server: %s:%u\n", &remote_address[0], remote_port);
+    if (strlen(remote_address) > 0) {
         session = start_session(remote_address, remote_port, 0);
         if (!session) {
             fprintf(stderr, "whoops no udp bits\n");
