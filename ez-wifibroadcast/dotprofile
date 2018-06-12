@@ -581,7 +581,7 @@ function tx_function {
     echo
 
     if [ "$UDP" != "1" ]; then
-    	detect_nics
+    	echo "hey"
 	fi
 
     sleep 1
@@ -977,7 +977,7 @@ function rx_function {
 	if [ "$UDP" != "1" ]; then
     	UDP_FLAGS="-u"
     else
-    	UDP_FLAGS="-p"
+    	UDP_FLAGS="-n"
 	fi
 	ionice -c 1 -n 3 /root/wifibroadcast/rx -p 0 -d 1 -b $VIDEO_BLOCKS -r $VIDEO_FECS -f $VIDEO_BLOCKLENGTH -s $UDP_SERVER $UDP_FLAGS $UDP_PORT $NICS | ionice -c 1 -n 4 nice -n -10 tee >(ionice -c 1 -n 4 nice -n -10 /root/wifibroadcast_misc/ftee /root/videofifo2 > /dev/null 2>&1) >(ionice -c 1 nice -n -10 /root/wifibroadcast_misc/ftee /root/videofifo4 > /dev/null 2>&1) >(ionice -c 3 nice /root/wifibroadcast_misc/ftee /root/videofifo3 > /dev/null 2>&1) | ionice -c 1 -n 4 nice -n -10 /root/wifibroadcast_misc/ftee /root/videofifo1 > /dev/null 2>&1
 

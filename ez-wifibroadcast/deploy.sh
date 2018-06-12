@@ -9,6 +9,7 @@ make
 cd ..
 rm -rf ~/wifibroadcast
 ln -s `pwd`/wifibroadcast ~/wifibroadcast
+chmod -R 777 ~/wifibroadcast
 rm -rf ~/.dotprofile
 cp -R dotprofile ~/.profile
 
