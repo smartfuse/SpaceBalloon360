@@ -52,9 +52,7 @@ int param_udp_remote_port = 0;
 int param_udp_receive_port = 0;
 UdpSession session = NULL;
 
-wifibroadcast_rx_status_t *rx_status = NULL;
 int max_block_num = -1;
-
 
 long long current_timestamp() {
     struct timeval te;
@@ -190,11 +188,6 @@ void block_buffer_list_reset(block_buffer_t *block_buffer_list, size_t block_buf
 }
 
 void process_payload(uint8_t *data, size_t data_len, int crc_correct, block_buffer_t *block_buffer_list, int adapter_no) {
-    rx_status->adapter[adapter_no].received_packet_cnt++;
-//	rx_status->adapter[adapter_no].last_update = dbm_ts_now[adapter_no];
-//	fprintf(stderr,"lu[%d]: %lld\n",adapter_no,rx_status->adapter[adapter_no].last_update);
-//	rx_status->adapter[adapter_no].last_update = current_timestamp();
-
     wifi_packet_header_t *wph;
     int block_num;
     int packet_num;
@@ -214,19 +207,6 @@ void process_payload(uint8_t *data, size_t data_len, int crc_correct, block_buff
     int tx_restart = (block_num + 128*param_block_buffers < max_block_num);
     if((block_num > max_block_num || tx_restart) && crc_correct) {
         if(tx_restart) {
-            rx_status->tx_restart_cnt++;
-            rx_status->received_block_cnt = 0;
-            rx_status->damaged_block_cnt = 0;
-            rx_status->received_packet_cnt = 0;
-            rx_status->lost_packet_cnt = 0;
-            rx_status->kbitrate = 0;
-            int g;
-            for(g=0; g<MAX_PENUMBRA_INTERFACES; ++g) {
-                rx_status->adapter[g].received_packet_cnt = 0;
-                rx_status->adapter[g].wrong_crc_cnt = 0;
-                rx_status->adapter[g].current_signal_dbm = -126;
-                rx_status->adapter[g].signal_good = 0;
-            }
 //          fprintf(stderr, "TX re-start detected\n");
             block_buffer_list_reset(block_buffer_list, param_block_buffers, param_data_packets_per_block + param_fec_packets_per_block);
         }
@@ -247,8 +227,6 @@ void process_payload(uint8_t *data, size_t data_len, int crc_correct, block_buff
         int last_block_num = block_buffer_list[min_block_num_idx].block_num;
 
         if(last_block_num != -1) {
-            rx_status->received_block_cnt++;
-
             //we have both pointers to the packet buffers (to get information about crc and vadility) and raw data pointers for fec_decode
             packet_buffer_t *data_pkgs[MAX_DATA_OR_FEC_PACKETS_PER_BLOCK];
             packet_buffer_t *fec_pkgs[MAX_DATA_OR_FEC_PACKETS_PER_BLOCK];
@@ -290,10 +268,7 @@ void process_payload(uint8_t *data, size_t data_len, int crc_correct, block_buff
 
             if(datas_missing_c + fecs_missing_c > 0) {
                 packets_lost_in_block = (datas_missing_c + fecs_missing_c);
-                rx_status->lost_packet_cnt = rx_status->lost_packet_cnt + packets_lost_in_block;
             }
-
-            rx_status->received_packet_cnt = rx_status->received_packet_cnt + param_data_packets_per_block + param_fec_packets_per_block - packets_lost_in_block;
 
             packets_missing_last = packets_missing;
             packets_missing = packets_lost_in_block;
@@ -306,7 +281,6 @@ void process_payload(uint8_t *data, size_t data_len, int crc_correct, block_buff
             if (pm_now - pm_prev_time > 220) {
                 pm_prev_time = current_timestamp();
 //		fprintf(stderr, "miss: %d   last: %d\n", packets_missing,packets_missing_last);
-                rx_status->lost_per_block_cnt = packets_missing;
                 packets_missing = 0;
                 packets_missing_last = 0;
             }
@@ -341,9 +315,6 @@ void process_payload(uint8_t *data, size_t data_len, int crc_correct, block_buff
 
             int reconstruction_failed = datas_missing_c + datas_corrupt_c > good_fecs_c;
             if(reconstruction_failed) {
-                //we did not have enough FEC packets to repair this block
-                rx_status->damaged_block_cnt++;
-                //fprintf(stderr, "Could not fully reconstruct block %x! Damage rate: %f (%d / %d blocks)\n", last_block_num, 1.0 * rx_status->damaged_block_cnt / rx_status->received_block_cnt, rx_status->damaged_block_cnt, rx_status->received_block_cnt);
                 //debug_print("Data mis: %d\tData corr: %d\tFEC mis: %d\tFEC corr: %d\n", datas_missing_c, datas_corrupt_c, fecs_missing_c, fecs_corrupt_c);
             }
 
@@ -364,7 +335,6 @@ void process_payload(uint8_t *data, size_t data_len, int crc_correct, block_buff
                         prev_time = current_timestamp();
                         kbitrate = ((bytes_written * 8) / 1024) * 2;
 //    			fprintf(stderr, "\t\tkbitrate:%d\n", kbitrate);
-                        rx_status->kbitrate = kbitrate;
                         bytes_written = 0;
                     }
                 }
@@ -495,8 +465,6 @@ void process_packet(monitor_interface_t *interface, block_buffer_t *block_buffer
                 prd.m_nRadiotapFlags = *rti.this_arg;
                 break;
             case IEEE80211_RADIOTAP_DBM_ANTSIGNAL:
-                //rx_status->adapter[adapter_no].current_signal_dbm = (int8_t)(*rti.this_arg);
-
                 dbm_last[adapter_no] = dbm[adapter_no];
                 dbm[adapter_no] = (int8_t)(*rti.this_arg);
 
@@ -508,7 +476,6 @@ void process_packet(monitor_interface_t *interface, block_buffer_t *block_buffer
                 if (dbm_ts_now[adapter_no] - dbm_ts_prev[adapter_no] > 220) {
                     dbm_ts_prev[adapter_no] = current_timestamp();
                     //	    fprintf(stderr, "miss: %d   last: %d\n", packets_missing,packets_missing_last);
-                    rx_status->adapter[adapter_no].current_signal_dbm = dbm[adapter_no];
                     dbm[adapter_no] = 99;
                     dbm_last[adapter_no] = 99;
                 }
@@ -539,50 +506,6 @@ void process_packet(monitor_interface_t *interface, block_buffer_t *block_buffer
     }
 
     process_payload(pu8Payload, bytes, checksum_correct, block_buffer_list, adapter_no);
-}
-
-
-void status_memory_init(wifibroadcast_rx_status_t *s) {
-    s->received_block_cnt = 0;
-    s->damaged_block_cnt = 0;
-    s->received_packet_cnt = 0;
-    s->lost_packet_cnt = 0;
-    s->tx_restart_cnt = 0;
-    s->wifi_adapter_cnt = 0;
-    s->kbitrate = 0;
-
-    int i;
-    for(i=0; i<MAX_PENUMBRA_INTERFACES; ++i) {
-        s->adapter[i].received_packet_cnt = 0;
-        s->adapter[i].wrong_crc_cnt = 0;
-        s->adapter[i].current_signal_dbm = -126;
-        s->adapter[i].type = 2; // set to 2 to see if it didnt get set later ...
-    }
-}
-
-
-wifibroadcast_rx_status_t *status_memory_open(void) {
-    char buf[128];
-    int fd;
-
-    sprintf(buf, "/wifibroadcast_rx_status_%d", param_port);
-    fd = shm_open(buf, O_RDWR, S_IRUSR | S_IWUSR);
-
-    if(fd < 0) {
-        perror("shm_open");
-        exit(1);
-    }
-
-    void *retval = mmap(NULL, sizeof(wifibroadcast_rx_status_t), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    if (retval == MAP_FAILED) {
-        perror("mmap");
-        exit(1);
-    }
-
-    wifibroadcast_rx_status_t *tretval = (wifibroadcast_rx_status_t*)retval;
-    status_memory_init(tretval);
-
-    return tretval;
 }
 
 block_buffer_t *create_block_buffer_list() {
@@ -677,8 +600,6 @@ int main(int argc, char *argv[]) {
         free_buffer(&buffer);
     }
 
-    rx_status = status_memory_open();
-
     while(x < argc && num_interfaces < MAX_PENUMBRA_INTERFACES) {
         open_and_configure_interface(argv[x], param_port, interfaces + num_interfaces);
 
@@ -687,13 +608,6 @@ int main(int argc, char *argv[]) {
         if(!procfile) {fprintf(stderr,"ERROR: opening %s failed!\n", path); return 0;}
         fgets(line, 100, procfile); // read the first line
         fgets(line, 100, procfile); // read the 2nd line
-        if(strncmp(line, "DRIVER=ath9k_htc", 16) == 0) { // it's an atheros card
-//		    fprintf(stderr, "Atheros\n");
-            rx_status->adapter[j].type = (int8_t)(0);
-        } else {
-//		    fprintf(stderr, "Ralink\n");
-            rx_status->adapter[j].type = (int8_t)(1);
-        }
         fclose(procfile);
 
         ++num_interfaces;
@@ -701,8 +615,6 @@ int main(int argc, char *argv[]) {
         ++j;
         usleep(10000); // wait a bit between configuring interfaces to reduce Atheros and Pi USB flakiness
     }
-
-    rx_status->wifi_adapter_cnt = num_interfaces;
 
     block_buffer_list = create_block_buffer_list();
 
@@ -713,15 +625,7 @@ int main(int argc, char *argv[]) {
             packetcounter_ts_prev[i] = current_timestamp();
             for(i=0; i<num_interfaces; ++i) {
                 packetcounter_last[i] = packetcounter[i];
-                packetcounter[i] = rx_status->adapter[i].received_packet_cnt;
 //			fprintf(stderr,"counter:%d last:%d   ",packetcounter[i],packetcounter_last[i]);
-                if (packetcounter[i] == packetcounter_last[i]) {
-                    rx_status->adapter[i].signal_good = 0;
-//			    fprintf(stderr,"signal_good[%d]:%d\n",i,rx_status->adapter[i].signal_good);
-                } else {
-                    rx_status->adapter[i].signal_good = 1;
-//			    fprintf(stderr,"signal_good[%d]:%d\n",i,rx_status->adapter[i].signal_good);
-                }
             }
         }
         fd_set readset;
