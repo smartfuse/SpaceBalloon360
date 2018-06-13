@@ -16,6 +16,7 @@
 #include "fec.h"
 #include "lib.h"
 #include "wifibroadcast.h"
+#include <pcap.h>
 #include "radiotap.h"
 #include "udp/rx_udp_util.h"
 #include "udp/udp_client.h"

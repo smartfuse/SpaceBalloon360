@@ -14,6 +14,7 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 #include "lib.h"
+#include <pcap.h>
 #include "radiotap.h"
 #include <time.h>
 #include <sys/resource.h>

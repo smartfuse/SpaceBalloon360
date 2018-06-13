@@ -19,6 +19,7 @@
 
 #include "lib.h"
 #include "wifibroadcast.h"
+#include <pcap.h>
 #include "radiotap.h"
 #include <time.h>
 #include <sys/resource.h>
