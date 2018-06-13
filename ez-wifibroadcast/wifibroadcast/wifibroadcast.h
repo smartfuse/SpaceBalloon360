@@ -8,7 +8,6 @@
 #include <utime.h>
 #include <unistd.h>
 #include <getopt.h>
-#include <pcap.h>
 #include <endian.h>
 #include <fcntl.h>
 #include <time.h>

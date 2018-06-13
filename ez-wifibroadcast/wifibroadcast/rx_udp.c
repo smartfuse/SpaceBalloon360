@@ -15,12 +15,10 @@
  */
 #include "fec.h"
 #include "lib.h"
-#include "wifibroadcast.h"
-#include <pcap.h>
 #include "radiotap.h"
 #include "udp/rx_udp_util.h"
 #include "udp/udp_client.h"
-#include <time.h>
+#include <sys/time.h>
 #include <sys/resource.h>
 
 #define MAX_PACKET_LENGTH 4192
@@ -30,15 +28,6 @@
 
 #define DEBUG 0
 #define debug_print(fmt, ...) do { if (DEBUG) fprintf(stderr, fmt, __VA_ARGS__); } while (0)
-
-// this is where we store a summary of the information from the radiotap header
-typedef struct  {
-    int m_nChannel;
-    int m_nChannelFlags;
-    int m_nRate;
-    int m_nAntenna;
-    int m_nRadiotapFlags;
-} __attribute__((packed)) PENUMBRA_RADIOTAP_DATA;
 
 
 int flagHelp = 0;
@@ -53,7 +42,6 @@ int param_udp_remote_port = 0;
 int param_udp_receive_port = 0;
 UdpSession session = NULL;
 
-wifibroadcast_rx_status_t *rx_status = NULL;
 int max_block_num = -1;
 
 
@@ -89,10 +77,10 @@ long long packetcounter_ts_now[6];
 
 void usage(void) {
     printf(
-            "rx (c)2015 befinitiv. Based on packetspammer by Andy Green. Dirty mods by Rodizio. GPL2 licensed.\n"
+        "rx (c)2015 befinitiv. Based on packetspammer by Andy Green. Dirty mods by Rodizio. GPL2 licensed.\n"
             "\n"
             "Usage: rx [options] <interfaces>\n\nOptions\n"
-            "-p <port>   Port number 0-255 (default 0)\n"
+            "-p <port>   Port number 0-255 (default 0)\n" // Unused?
             "-b <count>  Number of data packets in a block (default 8). Needs to match with tx.\n"
             "-r <count>  Number of FEC packets per block (default 4). Needs to match with tx.\n"
             "-f <bytes>  Bytes per packet (default %d. max %d). This is also the FEC block size. Needs to match with tx\n"
@@ -109,67 +97,9 @@ void usage(void) {
 }
 
 typedef struct {
-    pcap_t *ppcap;
-    int selectable_fd;
-    int n80211HeaderLength;
-} monitor_interface_t;
-
-typedef struct {
     int block_num;
     packet_buffer_t *packet_buffer_list;
 } block_buffer_t;
-
-
-void open_and_configure_interface(const char *name, int port, monitor_interface_t *interface) {
-    struct bpf_program bpfprogram;
-    char szProgram[512];
-    char szErrbuf[PCAP_ERRBUF_SIZE];
-
-    int port_encoded = (port * 2) + 1;
-
-    // open the interface in pcap
-    szErrbuf[0] = '\0';
-
-    interface->ppcap = pcap_open_live(name, 2350, 0, -1, szErrbuf);
-    if (interface->ppcap == NULL) {
-        fprintf(stderr, "Unable to open %s: %s\n", name, szErrbuf);
-        exit(1);
-    }
-
-    if(pcap_setnonblock(interface->ppcap, 1, szErrbuf) < 0) {
-        fprintf(stderr, "Error setting %s to nonblocking mode: %s\n", name, szErrbuf);
-    }
-
-    if(pcap_setdirection(interface->ppcap, PCAP_D_IN) < 0) {
-        fprintf(stderr, "Error setting %s direction\n", name);
-    }
-
-    int nLinkEncap = pcap_datalink(interface->ppcap);
-
-    if (nLinkEncap == DLT_IEEE802_11_RADIO) {
-//			interface->n80211HeaderLength = 0x18; // Use the first 5 bytes as header, first two bytes frametype, next two bytes duration, then port
-        // match on data short, data, rts (and port)
-        sprintf(szProgram, "(ether[0x00:2] == 0x0801 || ether[0x00:2] == 0x0802 || ether[0x00:4] == 0xb4010000) && ether[0x04:1] == 0x%.2x", port_encoded);
-    } else {
-        fprintf(stderr, "ERROR: unknown encapsulation on %s! check if monitor mode is supported and enabled\n", name);
-        exit(1);
-    }
-
-    if (pcap_compile(interface->ppcap, &bpfprogram, szProgram, 1, 0) == -1) {
-        puts(szProgram);
-        puts(pcap_geterr(interface->ppcap));
-        exit(1);
-    } else {
-        if (pcap_setfilter(interface->ppcap, &bpfprogram) == -1) {
-            fprintf(stderr, "%s\n", szProgram);
-            fprintf(stderr, "%s\n", pcap_geterr(interface->ppcap));
-        } else {
-        }
-        pcap_freecode(&bpfprogram);
-    }
-
-    interface->selectable_fd = pcap_get_selectable_fd(interface->ppcap);
-}
 
 
 void block_buffer_list_reset(block_buffer_t *block_buffer_list, size_t block_buffer_list_len, int block_buffer_len) {
@@ -191,11 +121,12 @@ void block_buffer_list_reset(block_buffer_t *block_buffer_list, size_t block_buf
 }
 
 void process_payload(uint8_t *data, size_t data_len, int crc_correct, block_buffer_t *block_buffer_list, int adapter_no) {
-    rx_status->adapter[adapter_no].received_packet_cnt++;
+//    rx_status->adapter[adapter_no].received_packet_cnt++;
 //	rx_status->adapter[adapter_no].last_update = dbm_ts_now[adapter_no];
 //	fprintf(stderr,"lu[%d]: %lld\n",adapter_no,rx_status->adapter[adapter_no].last_update);
 //	rx_status->adapter[adapter_no].last_update = current_timestamp();
 
+    printf("%d %d", data_len, crc_correct);
     wifi_packet_header_t *wph;
     int block_num;
     int packet_num;
@@ -215,18 +146,18 @@ void process_payload(uint8_t *data, size_t data_len, int crc_correct, block_buff
     int tx_restart = (block_num + 128*param_block_buffers < max_block_num);
     if((block_num > max_block_num || tx_restart) && crc_correct) {
         if(tx_restart) {
-            rx_status->tx_restart_cnt++;
-            rx_status->received_block_cnt = 0;
-            rx_status->damaged_block_cnt = 0;
-            rx_status->received_packet_cnt = 0;
-            rx_status->lost_packet_cnt = 0;
-            rx_status->kbitrate = 0;
+//            rx_status->tx_restart_cnt++;
+//            rx_status->received_block_cnt = 0;
+//            rx_status->damaged_block_cnt = 0;
+//            rx_status->received_packet_cnt = 0;
+//            rx_status->lost_packet_cnt = 0;
+//            rx_status->kbitrate = 0;
             int g;
             for(g=0; g<MAX_PENUMBRA_INTERFACES; ++g) {
-                rx_status->adapter[g].received_packet_cnt = 0;
-                rx_status->adapter[g].wrong_crc_cnt = 0;
-                rx_status->adapter[g].current_signal_dbm = -126;
-                rx_status->adapter[g].signal_good = 0;
+//                rx_status->adapter[g].received_packet_cnt = 0;
+//                rx_status->adapter[g].wrong_crc_cnt = 0;
+//                rx_status->adapter[g].current_signal_dbm = -126;
+//                rx_status->adapter[g].signal_good = 0;
             }
 //          fprintf(stderr, "TX re-start detected\n");
             block_buffer_list_reset(block_buffer_list, param_block_buffers, param_data_packets_per_block + param_fec_packets_per_block);
@@ -248,7 +179,7 @@ void process_payload(uint8_t *data, size_t data_len, int crc_correct, block_buff
         int last_block_num = block_buffer_list[min_block_num_idx].block_num;
 
         if(last_block_num != -1) {
-            rx_status->received_block_cnt++;
+//            rx_status->received_block_cnt++;
 
             //we have both pointers to the packet buffers (to get information about crc and vadility) and raw data pointers for fec_decode
             packet_buffer_t *data_pkgs[MAX_DATA_OR_FEC_PACKETS_PER_BLOCK];
@@ -291,10 +222,10 @@ void process_payload(uint8_t *data, size_t data_len, int crc_correct, block_buff
 
             if(datas_missing_c + fecs_missing_c > 0) {
                 packets_lost_in_block = (datas_missing_c + fecs_missing_c);
-                rx_status->lost_packet_cnt = rx_status->lost_packet_cnt + packets_lost_in_block;
+//                rx_status->lost_packet_cnt = rx_status->lost_packet_cnt + packets_lost_in_block;
             }
 
-            rx_status->received_packet_cnt = rx_status->received_packet_cnt + param_data_packets_per_block + param_fec_packets_per_block - packets_lost_in_block;
+//            rx_status->received_packet_cnt = rx_status->received_packet_cnt + param_data_packets_per_block + param_fec_packets_per_block - packets_lost_in_block;
 
             packets_missing_last = packets_missing;
             packets_missing = packets_lost_in_block;
@@ -307,7 +238,7 @@ void process_payload(uint8_t *data, size_t data_len, int crc_correct, block_buff
             if (pm_now - pm_prev_time > 220) {
                 pm_prev_time = current_timestamp();
 //		fprintf(stderr, "miss: %d   last: %d\n", packets_missing,packets_missing_last);
-                rx_status->lost_per_block_cnt = packets_missing;
+//                rx_status->lost_per_block_cnt = packets_missing;
                 packets_missing = 0;
                 packets_missing_last = 0;
             }
@@ -343,7 +274,7 @@ void process_payload(uint8_t *data, size_t data_len, int crc_correct, block_buff
             int reconstruction_failed = datas_missing_c + datas_corrupt_c > good_fecs_c;
             if(reconstruction_failed) {
                 //we did not have enough FEC packets to repair this block
-                rx_status->damaged_block_cnt++;
+//                rx_status->damaged_block_cnt++;
                 //fprintf(stderr, "Could not fully reconstruct block %x! Damage rate: %f (%d / %d blocks)\n", last_block_num, 1.0 * rx_status->damaged_block_cnt / rx_status->received_block_cnt, rx_status->damaged_block_cnt, rx_status->received_block_cnt);
                 //debug_print("Data mis: %d\tData corr: %d\tFEC mis: %d\tFEC corr: %d\n", datas_missing_c, datas_corrupt_c, fecs_missing_c, fecs_corrupt_c);
             }
@@ -365,7 +296,7 @@ void process_payload(uint8_t *data, size_t data_len, int crc_correct, block_buff
                         prev_time = current_timestamp();
                         kbitrate = ((bytes_written * 8) / 1024) * 2;
 //    			fprintf(stderr, "\t\tkbitrate:%d\n", kbitrate);
-                        rx_status->kbitrate = kbitrate;
+//                        rx_status->kbitrate = kbitrate;
                         bytes_written = 0;
                     }
                 }
@@ -410,182 +341,6 @@ void process_payload(uint8_t *data, size_t data_len, int crc_correct, block_buff
 
 }
 
-
-void process_packet(monitor_interface_t *interface, block_buffer_t *block_buffer_list, int adapter_no) {
-    struct pcap_pkthdr * ppcapPacketHeader = NULL;
-    struct ieee80211_radiotap_iterator rti;
-    PENUMBRA_RADIOTAP_DATA prd;
-    u8 payloadBuffer[MAX_PACKET_LENGTH];
-    u8 *pu8Payload = payloadBuffer;
-    int bytes;
-    int n;
-    int retval;
-    int u16HeaderLen;
-
-    retval = pcap_next_ex(interface->ppcap, &ppcapPacketHeader, (const u_char**)&pu8Payload); // receive
-
-    if (retval < 0) {
-        if (strcmp("The interface went down",pcap_geterr(interface->ppcap)) == 0) {
-            fprintf(stderr, "rx ERROR: The interface went down\n");
-            exit(9);
-        } else {
-            fprintf(stderr, "rx ERROR: %s\n", pcap_geterr(interface->ppcap));
-            exit(2);
-        }
-    }
-
-    if (retval != 1) {
-        //	fprintf(stderr, "rx ERROR retval != 1: retval: %d\n", retval);
-        return;
-    }
-
-    // fetch radiotap header length from radiotap header (seems to be 36 for Atheros and 18 for Ralink)
-    u16HeaderLen = (pu8Payload[2] + (pu8Payload[3] << 8));
-//	fprintf(stderr, "u16headerlen: %d\n", u16HeaderLen);
-
-    // check for packet type and set headerlen accordingly
-    pu8Payload += u16HeaderLen;
-    switch (pu8Payload[1]) {
-        case 0x01: // data short, rts
-//		fprintf(stderr,"payload 0x01 data short, rts\n");
-            interface->n80211HeaderLength = 0x05;
-            break;
-        case 0x02: // data
-//		fprintf(stderr,"payload 0x02 data\n");
-            interface->n80211HeaderLength = 0x18;
-            break;
-        default:
-//		fprintf(stderr, "rx ERROR: uknown packet type received!\n");
-            break;
-    }
-    pu8Payload -= u16HeaderLen;
-
-    if (ppcapPacketHeader->len < (u16HeaderLen + interface->n80211HeaderLength)) {
-        fprintf(stderr, "rx ERROR: ppcapheaderlen < u16headerlen+n80211headerlen: ppcapPacketHeader->len: %d\n", ppcapPacketHeader->len);
-        return;
-    }
-
-    bytes = ppcapPacketHeader->len - (u16HeaderLen + interface->n80211HeaderLength);
-    if (bytes < 0) {
-        fprintf(stderr, "rx ERROR: bytes < 0: bytes: %d\n", bytes);
-        return;
-    }
-
-    if (ieee80211_radiotap_iterator_init(&rti,(struct ieee80211_radiotap_header *)pu8Payload, ppcapPacketHeader->len) < 0) {
-        fprintf(stderr, "rx ERROR: radiotap_iterator_init < 0\n");
-        return;
-    }
-
-    while ((n = ieee80211_radiotap_iterator_next(&rti)) == 0) {
-        switch (rti.this_arg_index) {
-            /* we don't use these radiotap infos right now, disabled
-            case IEEE80211_RADIOTAP_RATE:
-                prd.m_nRate = (*rti.this_arg);
-                break;
-            case IEEE80211_RADIOTAP_CHANNEL:
-                prd.m_nChannel =
-                    le16_to_cpu(*((u16 *)rti.this_arg));
-                prd.m_nChannelFlags =
-                    le16_to_cpu(*((u16 *)(rti.this_arg + 2)));
-                break;
-            case IEEE80211_RADIOTAP_ANTENNA:
-                prd.m_nAntenna = (*rti.this_arg) + 1;
-                break;
-            */
-            case IEEE80211_RADIOTAP_FLAGS:
-                prd.m_nRadiotapFlags = *rti.this_arg;
-                break;
-            case IEEE80211_RADIOTAP_DBM_ANTSIGNAL:
-                //rx_status->adapter[adapter_no].current_signal_dbm = (int8_t)(*rti.this_arg);
-
-                dbm_last[adapter_no] = dbm[adapter_no];
-                dbm[adapter_no] = (int8_t)(*rti.this_arg);
-
-                if (dbm[adapter_no] > dbm_last[adapter_no]) { // if we have a better signal than last time, ignore
-                    dbm[adapter_no] = dbm_last[adapter_no];
-                }
-
-                dbm_ts_now[adapter_no] = current_timestamp();
-                if (dbm_ts_now[adapter_no] - dbm_ts_prev[adapter_no] > 220) {
-                    dbm_ts_prev[adapter_no] = current_timestamp();
-                    //	    fprintf(stderr, "miss: %d   last: %d\n", packets_missing,packets_missing_last);
-                    rx_status->adapter[adapter_no].current_signal_dbm = dbm[adapter_no];
-                    dbm[adapter_no] = 99;
-                    dbm_last[adapter_no] = 99;
-                }
-                break;
-        }
-    }
-
-    pu8Payload += u16HeaderLen + interface->n80211HeaderLength;
-//	fprintf(stderr, "pu8payload: %d\n", pu8Payload);
-
-    // Ralink and Atheros both always supply the FCS to userspace, no need to check
-    //if (prd.m_nRadiotapFlags & IEEE80211_RADIOTAP_F_FCS)
-    //bytes -= 4;
-
-    // TODO: disable checksum handling in process_payload(), not needed since we have fscfail disabled
-    int checksum_correct = 1;
-
-    if (session != NULL) {
-        struct RxStruct rxStruct;
-        memset(rxStruct.data, 0, MAX_PACKET_LEN);
-        memcpy(rxStruct.data, pu8Payload, bytes);
-        rxStruct.crc_correct = checksum_correct;
-        rxStruct.data_len = (uint32_t) bytes;
-
-        char *buffer = create_buffer();
-        send_data(session, buffer, write_buffer(buffer, rxStruct));
-        free_buffer(&buffer);
-    }
-
-    process_payload(pu8Payload, bytes, checksum_correct, block_buffer_list, adapter_no);
-}
-
-
-void status_memory_init(wifibroadcast_rx_status_t *s) {
-    s->received_block_cnt = 0;
-    s->damaged_block_cnt = 0;
-    s->received_packet_cnt = 0;
-    s->lost_packet_cnt = 0;
-    s->tx_restart_cnt = 0;
-    s->wifi_adapter_cnt = 0;
-    s->kbitrate = 0;
-
-    int i;
-    for(i=0; i<MAX_PENUMBRA_INTERFACES; ++i) {
-        s->adapter[i].received_packet_cnt = 0;
-        s->adapter[i].wrong_crc_cnt = 0;
-        s->adapter[i].current_signal_dbm = -126;
-        s->adapter[i].type = 2; // set to 2 to see if it didnt get set later ...
-    }
-}
-
-
-wifibroadcast_rx_status_t *status_memory_open(void) {
-    char buf[128];
-    int fd;
-
-    sprintf(buf, "/wifibroadcast_rx_status_%d", param_port);
-    fd = shm_open(buf, O_RDWR, S_IRUSR | S_IWUSR);
-
-    if(fd < 0) {
-        perror("shm_open");
-        exit(1);
-    }
-
-    void *retval = mmap(NULL, sizeof(wifibroadcast_rx_status_t), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    if (retval == MAP_FAILED) {
-        perror("mmap");
-        exit(1);
-    }
-
-    wifibroadcast_rx_status_t *tretval = (wifibroadcast_rx_status_t*)retval;
-    status_memory_init(tretval);
-
-    return tretval;
-}
-
 block_buffer_t *create_block_buffer_list() {
     //block buffers contain both the block_num as well as packet buffers for a block.
     block_buffer_t * block_buffer_list = malloc(sizeof(block_buffer_t) * param_block_buffers);
@@ -601,8 +356,6 @@ block_buffer_t *create_block_buffer_list() {
 int main(int argc, char *argv[]) {
     setpriority(PRIO_PROCESS, 0, -10);
 
-    monitor_interface_t interfaces[MAX_PENUMBRA_INTERFACES];
-    int num_interfaces = 0;
     int i;
 
     prev_time = current_timestamp();
@@ -613,8 +366,8 @@ int main(int argc, char *argv[]) {
     int c;
     int nOptionIndex;
     static const struct option optiona[] = {
-            { "help", no_argument, &flagHelp, 1 },
-            { 0, 0, 0, 0 }
+        { "help", no_argument, &flagHelp, 1 },
+        { 0, 0, 0, 0 }
     };
 
     while ((c = getopt_long(argc, argv, "h:p:b:r:d:f:s:n:u:", optiona, &nOptionIndex)) != -1) {
@@ -656,7 +409,6 @@ int main(int argc, char *argv[]) {
     }
 
     fec_init();
-    rx_status = status_memory_open();
 
     int j = 0;
     int x = optind;
@@ -670,74 +422,13 @@ int main(int argc, char *argv[]) {
         session = start_session(remote_address, param_udp_receive_port, 1);
         char *buffer = create_buffer();
         struct RxStruct rxStruct;
-        block_buffer_list = create_block_buffer_list();
         while (1) {
             receive_data(session, buffer, MAX_BUFFER_LEN);
             read_buffer(buffer, &rxStruct);
+            block_buffer_list = create_block_buffer_list();
             process_payload(rxStruct.data, rxStruct.data_len, rxStruct.crc_correct, block_buffer_list, 0);
         }
         free_buffer(&buffer);
-    }
-
-    while(x < argc && num_interfaces < MAX_PENUMBRA_INTERFACES) {
-        open_and_configure_interface(argv[x], param_port, interfaces + num_interfaces);
-
-        snprintf(path, 45, "/sys/class/net/%s/device/uevent", argv[x]);
-        procfile = fopen(path, "r");
-        if(!procfile) {fprintf(stderr,"ERROR: opening %s failed!\n", path); return 0;}
-        fgets(line, 100, procfile); // read the first line
-        fgets(line, 100, procfile); // read the 2nd line
-        if(strncmp(line, "DRIVER=ath9k_htc", 16) == 0) { // it's an atheros card
-//		    fprintf(stderr, "Atheros\n");
-            rx_status->adapter[j].type = (int8_t)(0);
-        } else {
-//		    fprintf(stderr, "Ralink\n");
-            rx_status->adapter[j].type = (int8_t)(1);
-        }
-        fclose(procfile);
-
-        ++num_interfaces;
-        ++x;
-        ++j;
-        usleep(10000); // wait a bit between configuring interfaces to reduce Atheros and Pi USB flakiness
-    }
-
-    rx_status->wifi_adapter_cnt = num_interfaces;
-
-    block_buffer_list = create_block_buffer_list();
-
-    for(;;) {
-
-        packetcounter_ts_now[i] = current_timestamp();
-        if (packetcounter_ts_now[i] - packetcounter_ts_prev[i] > 220) {
-            packetcounter_ts_prev[i] = current_timestamp();
-            for(i=0; i<num_interfaces; ++i) {
-                packetcounter_last[i] = packetcounter[i];
-                packetcounter[i] = rx_status->adapter[i].received_packet_cnt;
-//			fprintf(stderr,"counter:%d last:%d   ",packetcounter[i],packetcounter_last[i]);
-                if (packetcounter[i] == packetcounter_last[i]) {
-                    rx_status->adapter[i].signal_good = 0;
-//			    fprintf(stderr,"signal_good[%d]:%d\n",i,rx_status->adapter[i].signal_good);
-                } else {
-                    rx_status->adapter[i].signal_good = 1;
-//			    fprintf(stderr,"signal_good[%d]:%d\n",i,rx_status->adapter[i].signal_good);
-                }
-            }
-        }
-        fd_set readset;
-        struct timeval to;
-        to.tv_sec = 0;
-        to.tv_usec = 1e5; // 100ms
-
-        FD_ZERO(&readset);
-        for(i=0; i<num_interfaces; ++i) FD_SET(interfaces[i].selectable_fd, &readset);
-        int n = select(30, &readset, NULL, NULL, &to);
-        if(n == 0) continue;
-        for(i=0; i<num_interfaces; ++i) {
-            if(FD_ISSET(interfaces[i].selectable_fd, &readset)) {
-                process_packet(interfaces + i, block_buffer_list, i);
-            }
-        }
     }
 
     return (0);
