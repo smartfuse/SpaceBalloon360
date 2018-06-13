@@ -103,8 +103,21 @@ def main(input, output, input_width, number_of_frames, no_stdout):
     # obtain xmap and ymap
     xmap, ymap = dewarp.buildmap(Ws=W_remap, Hs=H, Wd=H, Hd=H, fov=FOV)
 
-    # calculate homography
-    M = Hcalc(cap, xmap, ymap, W, H, W_remap, offsetYL, offsetYR, templ_shape, maxL, maxR)
+    hfile = dir_path + '/homography.npy'
+
+    M = []
+    
+    if os.path.isfile(hfile):
+        sys.stderr.write("Loading homography from file " + hfile + "\n")
+        M = np.load(hfile)
+    else:
+        sys.stderr.write("Recalculating homography, writing to " + hfile + "\n")
+        M = Hcalc(cap, xmap, ymap, W, H, W_remap, offsetYL, offsetYR, templ_shape, maxL, maxR)    
+        np.save(hfile, M, allow_pickle=False)
+
+    sys.stderr.write("-- homography -- \n")
+    sys.stderr.write(str(M) + "\n")
+    sys.stderr.write("-- homography -- \n")
 
     # calculate vertical boundary of warped image, for later cropping
     top, bottom = cropping.verticalBoundary(M, W_remap, W, H)
