@@ -93,11 +93,13 @@ def main(input, output, input_width, number_of_frames, no_stdout):
 
     cap = None
 
+    print file
+
     # uncomment to read from file
-    if file == "camera":
+    if input == "camera":
         cap = cv2.VideoCapture(0)
     else:
-        cap = cv2.VideoCapture(file)
+        cap = cv2.VideoCapture(input)
 
     # define the codec and create VideoWriter object
     out = None
