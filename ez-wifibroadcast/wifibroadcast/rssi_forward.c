@@ -9,7 +9,11 @@
 #include <utime.h>
 #include <unistd.h>
 #include <getopt.h>
+#if defined(__APPLE__) && defined(__MACH__)
 #include <machine/endian.h>
+#else
+#include <endian.h>
+#endif
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <arpa/inet.h>
