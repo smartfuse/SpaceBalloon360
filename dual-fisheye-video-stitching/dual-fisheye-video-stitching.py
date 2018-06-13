@@ -91,7 +91,13 @@ def main(input, output, input_width, number_of_frames, no_stdout):
     W_lbl = 120
     blend_level = 3
 
-    cap = cv2.VideoCapture(input)
+    cap = None
+
+    # uncomment to read from file
+    if file == "camera":
+        cap = cv2.VideoCapture(0)
+    else:
+        cap = cv2.VideoCapture(file)
 
     # define the codec and create VideoWriter object
     out = None
@@ -129,6 +135,13 @@ def main(input, output, input_width, number_of_frames, no_stdout):
 
     # process the first frame
     ret, frame = cap.read()
+
+    sys.stderr.write("Input frame resolution: " + str(frame.shape) + "\n")
+
+    # Display the resulting frame
+    #cv2.imshow('p', frame)
+    #cv2.waitKey(0)
+
     if ret:
         # de-warp
         cam1 = cv2.remap(frame[:, :H], xmap, ymap, cv2.INTER_LINEAR)
