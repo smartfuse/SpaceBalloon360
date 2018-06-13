@@ -93,8 +93,6 @@ def main(input, output, input_width, number_of_frames, no_stdout):
 
     cap = None
 
-    print file
-
     # uncomment to read from file
     if input == "camera":
         cap = cv2.VideoCapture(0)
