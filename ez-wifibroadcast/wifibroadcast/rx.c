@@ -655,7 +655,6 @@ int main(int argc, char *argv[]) {
     }
 
     fec_init();
-    rx_status = status_memory_open();
 
     int j = 0;
     int x = optind;
@@ -677,6 +676,8 @@ int main(int argc, char *argv[]) {
         }
         free_buffer(&buffer);
     }
+
+    rx_status = status_memory_open();
 
     while(x < argc && num_interfaces < MAX_PENUMBRA_INTERFACES) {
         open_and_configure_interface(argv[x], param_port, interfaces + num_interfaces);

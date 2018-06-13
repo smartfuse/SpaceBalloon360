@@ -37,8 +37,7 @@
 
 #pragma once
 
-#include <linux/if_ether.h>
-#include <linux/kernel.h>
+#include <netinet/if_ether.h>
 
 /* Radiotap header version (from official NetBSD feed) */
 #define IEEE80211RADIOTAP_VERSION	"1.5"

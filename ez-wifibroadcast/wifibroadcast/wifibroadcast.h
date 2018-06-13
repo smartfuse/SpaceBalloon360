@@ -9,7 +9,7 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <pcap.h>
-#include <endian.h>
+#include <machine/endian.h>
 #include <fcntl.h>
 #include <time.h>
 #include <sys/mman.h>
@@ -17,6 +17,7 @@
 typedef unsigned int u32;
 typedef unsigned short u16;
 typedef unsigned char u8;
+typedef u16 __le16;
 typedef u32 __le32;
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN

@@ -73,8 +73,8 @@ int ieee80211_radiotap_iterator_init(
 			 * stated radiotap header length
 			 */
 
-			if (((ulong)iterator->arg -
-			     (ulong)iterator->rtheader) > iterator->max_length)
+			if (((unsigned long)iterator->arg -
+			     (unsigned long)iterator->rtheader) > iterator->max_length)
 				return -EINVAL;
 		}
 
@@ -179,8 +179,8 @@ int ieee80211_radiotap_iterator_next(
 		 * kind of boundary.
 		 */
 
-		pad = (((ulong)iterator->arg) -
-			((ulong)iterator->rtheader)) &
+		pad = (((unsigned long)iterator->arg) -
+			((unsigned long)iterator->rtheader)) &
 			((rt_sizes[iterator->arg_index] >> 4) - 1);
 
 		if (pad)
@@ -205,7 +205,7 @@ int ieee80211_radiotap_iterator_next(
 		 * max_length on the last arg, never exceeding it.
 		 */
 
-		if (((ulong)iterator->arg - (ulong)iterator->rtheader) >
+		if (((unsigned long)iterator->arg - (unsigned long)iterator->rtheader) >
 		    iterator->max_length)
 			return -EINVAL;
 
