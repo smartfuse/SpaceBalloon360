@@ -215,6 +215,5 @@ MAVLINK_FORWARDER=mavlink-routerd
 DEBUG=N
 #
 
-UDP_SERVER=10.0.0.21
+UDP_SERVER=space.prscp.net
 UDP_PORT=6000
-
