@@ -1,7 +1,7 @@
-LDFLAGS=-lrt -lpcap -lwiringPi
+LDFLAGS=-lrt -lpcap
 CPPFLAGS=-Wall -D _GNU_SOURCE
 
-all: rx_rc_telemetry_buf rx rx_rc_telemetry rssirx rssitx tx_rawsock tx_telemetry tx_measure rx_status tracker rssilogger syslogger channelscan check_alive rssi_forward wifiscan wifibackgroundscan sharedmem_init_rx sharedmem_init_tx
+all: rx_rc_telemetry_buf rx rx_rc_telemetry rssirx rssitx tx_rawsock tx_telemetry tx_measure rx_status rssilogger syslogger channelscan check_alive rssi_forward wifiscan wifibackgroundscan sharedmem_init_rx sharedmem_init_tx
 
 %.o: %.c
 	gcc -c -o $@ $< $(CPPFLAGS)
@@ -71,4 +71,4 @@ sharedmem_init_tx: sharedmem_init_tx.o lib.o
 	gcc -o $@ $^ $(LDFLAGS)
 
 clean:
-	rm -f rx_rc_telemetry_buf rx rx_rc_telemetry rssirx rssitx tx_rawsock tx_telemetry tx_measure rx_status tracker rssilogger syslogger channelscan check_alive rssi_forward wifiscan wifibackgroundscan sharedmem_init_rx sharedmem_init_tx *~ *.o udp/*.o udp/test/*.o
+	rm -f rx_rc_telemetry_buf rx rx_rc_telemetry rssirx rssitx tx_rawsock tx_telemetry tx_measure rx_status rssilogger syslogger channelscan check_alive rssi_forward wifiscan wifibackgroundscan sharedmem_init_rx sharedmem_init_tx *~ *.o udp/*.o udp/test/*.o
