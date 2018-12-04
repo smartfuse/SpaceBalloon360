@@ -8,7 +8,7 @@ all: rx_rc_telemetry_buf rx rx_rc_telemetry rssirx rssitx tx_rawsock tx_telemetr
 
 
 rx: rx.o lib.o radiotap.o fec.o udp/rx_udp_util.o udp/udp_client.o
-	gcc -o $@ $^ $(LDFLAGS)
+	gcc -o $@ $^ -lrt -lpcap
 
 rx_udp: rx_udp.o lib.o radiotap.o fec.o udp/rx_udp_util.o udp/udp_client.o
 	gcc -o $@ $^ -lrt
@@ -65,7 +65,7 @@ wifibackgroundscan: wifibackgroundscan.o radiotap.o
 	gcc -o $@ $^ $(LDFLAGS)
 
 sharedmem_init_rx: sharedmem_init_rx.o lib.o
-	gcc -o $@ $^ $(LDFLAGS)
+	gcc -o $@ $^ -lrt
 
 sharedmem_init_tx: sharedmem_init_tx.o lib.o
 	gcc -o $@ $^ $(LDFLAGS)

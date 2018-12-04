@@ -1,0 +1,37 @@
+# Also run `vagrant plugin install vagrant-vbguest` to automatically install vbguest
+# TODO: the usb adapter does not work on first boot. figure out why
+# TODO: remove grub boot screen
+
+dir = Dir.pwd
+vagrant_dir = File.expand_path(File.dirname(__FILE__))
+
+Vagrant.configure("2") do |config|
+  # Or bionic64 since it's a LTS
+  config.vm.box = "ubuntu/bionic64"
+#  config.vm.network "forwarded_port", guest: 2222, host: 22
+  #config.ssh.forward_agent = true
+
+  config.vm.provider "virtualbox" do |vb|
+    vb.name = "Ubuntu Groundstation"
+    # Enable USB2.0
+    vb.customize ["modifyvm", :id, "--usb", "on", "--usbehci", "on"]
+    vb.customize ['usbfilter', 'add', '0', '--target', :id, '--name', 'WN722N', '--vendorid', '0x0cf3', '--productid', '0x9271']
+    vb.customize ["modifyvm", :id, "--accelerate3d", "on"]
+    #vb.customize ["modifyvm", :id, "--vram", "64"]
+    vb.gui = true
+  end
+
+  # config.vbguest.auto_update = false
+  config.vbguest.auto_reboot = true
+  # config.vbguest.no_install = true
+
+  config.vm.provision "file", source: File.join(vagrant_dir,"scripts/run.sh"), destination: "/home/vagrant/run.sh"
+  #config.vm.provision "file", source: File.join(vagrant_dir,"provision/x11.service"), destination: "/etc/systemd/system/x11.service"
+
+  config.vm.synced_folder File.join(vagrant_dir,"../ez-wifibroadcast/wifibroadcast"), "/wifibroadcast"
+
+  if File.exists?(File.join(vagrant_dir,'provision','provision-post.sh')) then
+    config.vm.provision :shell, :path => File.join( "provision", "provision-post.sh" )
+  end
+end
+
