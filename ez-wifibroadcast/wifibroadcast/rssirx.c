@@ -162,19 +162,19 @@ uint8_t process_packet(monitor_interface_t *interface, int adapter_no) {
 	pu8Payload += u16HeaderLen + interface->n80211HeaderLength;
 	memcpy(&payloaddata,pu8Payload,38); // copy payloaddata (signal, lost packets count, cpuload, temp, ....) to struct
 
-//	printf ("signal:%d\n",payloaddata.signal);
-//	printf ("lostpackets:%d\n",payloaddata.lostpackets);
-//	printf ("signal_rc:%d\n",payloaddata.signal_rc);
-//	printf ("lostpackets_rc:%d\n",payloaddata.lostpackets_rc);
-//	printf ("cpuload:%d\n",payloaddata.cpuload);
-//	printf ("temp:%d\n",payloaddata.temp);
-//	printf ("injected_blocl_cnt:%d\n",payloaddata.injected_block_cnt);
+	printf ("signal:%d\n",payloaddata.signal);
+	printf ("lostpackets:%d\n",payloaddata.lostpackets);
+	printf ("signal_rc:%d\n",payloaddata.signal_rc);
+	printf ("lostpackets_rc:%d\n",payloaddata.lostpackets_rc);
+	printf ("cpuload:%d\n",payloaddata.cpuload);
+	printf ("temp:%d\n",payloaddata.temp);
+	printf ("injected_blocl_cnt:%d\n",payloaddata.injected_block_cnt);
 
-//	printf ("bitrate_kbit:%d\n",payloaddata.bitrate_kbit);
-//	printf ("bitrate_measured_kbit:%d\n",payloaddata.bitrate_measured_kbit);
+	printf ("bitrate_kbit:%d\n",payloaddata.bitrate_kbit);
+	printf ("bitrate_measured_kbit:%d\n",payloaddata.bitrate_measured_kbit);
 
-//	printf ("cts:%d\n",payloaddata.cts);
-//	printf ("undervolt:%d\n",payloaddata.undervolt);
+	printf ("cts:%d\n",payloaddata.cts);
+	printf ("undervolt:%d\n",payloaddata.undervolt);
 
 	rx_status->adapter[0].current_signal_dbm = payloaddata.signal;
 	rx_status->lost_packet_cnt = payloaddata.lostpackets;

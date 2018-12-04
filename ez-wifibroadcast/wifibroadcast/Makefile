@@ -1,11 +1,18 @@
-LDFLAGS=-lrt -lpcap -lwiringPi
+# LDFLAGS=-lrt -lpcap -lwiringPi
+LDFLAGS=-lrt -lpcap
 CPPFLAGS=-Wall -D _GNU_SOURCE
 
-all: rx_rc_telemetry_buf rx rx_rc_telemetry rssirx rssitx tx_rawsock tx_telemetry tx_measure rx_status tracker rssilogger syslogger channelscan check_alive rssi_forward wifiscan wifibackgroundscan sharedmem_init_rx sharedmem_init_tx
+all: onscreen_display_server rx_rc_telemetry_buf rx rx_rc_telemetry rssirx rssitx tx_rawsock tx_telemetry tx_measure rx_status rssilogger syslogger channelscan check_alive rssi_forward wifiscan wifibackgroundscan sharedmem_init_rx sharedmem_init_tx
+# all: rx_rc_telemetry_buf rx rx_rc_telemetry rssirx rssitx tx_rawsock tx_telemetry tx_measure rx_status tracker rssilogger syslogger channelscan check_alive rssi_forward wifiscan wifibackgroundscan sharedmem_init_rx sharedmem_init_tx
 
 %.o: %.c
 	gcc -c -o $@ $< $(CPPFLAGS)
 
+%.o: %.cpp
+	g++ -c -o $@ $< $(CPPFLAGS)
+
+onscreen_display_server: onscreen_display_server.o
+	g++ -o $@ $^ $(LDFLAGS)
 
 rx: rx.o lib.o radiotap.o fec.o udp/rx_udp_util.o udp/udp_client.o
 	gcc -o $@ $^ -lrt -lpcap
@@ -40,8 +47,8 @@ tx_measure: tx_measure.o lib.o fec.o
 rx_status: rx_status.o
 	gcc -o $@ $^ $(LDFLAGS)
 
-tracker: tracker.o
-	gcc -o $@ $^ $(LDFLAGS)
+# tracker: tracker.o
+# 	gcc -o $@ $^ $(LDFLAGS)
 
 rssilogger: rssilogger.o
 	gcc -o $@ $^ $(LDFLAGS)
@@ -71,4 +78,4 @@ sharedmem_init_tx: sharedmem_init_tx.o lib.o
 	gcc -o $@ $^ $(LDFLAGS)
 
 clean:
-	rm -f rx_rc_telemetry_buf rx rx_rc_telemetry rssirx rssitx tx_rawsock tx_telemetry tx_measure rx_status tracker rssilogger syslogger channelscan check_alive rssi_forward wifiscan wifibackgroundscan sharedmem_init_rx sharedmem_init_tx *~ *.o udp/*.o udp/test/*.o
+	rm -f onscreen_display_server rx_rc_telemetry_buf rx rx_rc_telemetry rssirx rssitx tx_rawsock tx_telemetry tx_measure rx_status tracker rssilogger syslogger channelscan check_alive rssi_forward wifiscan wifibackgroundscan sharedmem_init_rx sharedmem_init_tx *~ *.o udp/*.o udp/test/*.o
