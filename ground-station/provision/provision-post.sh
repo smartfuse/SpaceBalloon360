@@ -12,8 +12,9 @@ sudo apt install -y mpv firmware-ath9k-htc linux-modules-extra-$(uname -r)
 #linux-modules-extra-4.18.0-12-generic
 #sudo apt-get install linux-generic linux-image-generic linux-headers-generic build-essential dkms
 
-# Do we need virtualbox-guest-x11
+# Do we need virtualbox-guest-x11?
 
+# TODO: consider pre-compiling these binaries?
 cd /wifibroadcast
 make rx
 make sharedmem_init_rx
