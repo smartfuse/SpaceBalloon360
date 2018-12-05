@@ -19,3 +19,4 @@ wifiscan
 wifibackgroundscan
 sharedmem_init_rx
 sharedmem_init_tx
+onscreen_display_server
