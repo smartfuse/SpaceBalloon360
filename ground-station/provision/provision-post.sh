@@ -7,7 +7,7 @@ sudo apt update
 sudo apt install -y net-tools build-essential libpcap-dev wireless-tools
 # Crucial stuff
 # TODO: Consider --no-install-recommends
-sudo apt install -y mpv firmware-ath9k-htc linux-modules-extra-$(uname -r)
+sudo apt install -y mpv socat firmware-ath9k-htc linux-modules-extra-$(uname -r)
 # Something in here made it work I think?
 #linux-modules-extra-4.18.0-12-generic
 #sudo apt-get install linux-generic linux-image-generic linux-headers-generic build-essential dkms
@@ -15,9 +15,8 @@ sudo apt install -y mpv firmware-ath9k-htc linux-modules-extra-$(uname -r)
 # Do we need virtualbox-guest-x11?
 
 # TODO: consider pre-compiling these binaries?
-cd /wifibroadcast
-make rx
-make sharedmem_init_rx
+cd /SpaceBalloon360/ez-wifibroadcast/wifibroadcast
+make rx sharedmem_init_rx onscreen_display_server
 
 # sudo DEBIAN_FRONTEND=noninteractive apt-get -y install xubuntu-core^
 # sudo DEBIAN_FRONTEND=noninteractive apt-get -y install virtualbox-guest-dkms virtualbox-guest-utils virtualbox-guest-x11
