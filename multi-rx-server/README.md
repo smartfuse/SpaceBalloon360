@@ -6,6 +6,23 @@ This directory has tools and information about running a server to receive all t
 * Stitch the dual-fisheye video into equirectangular
 * Make the video data available over RTMP (so that we can pull it from OBS)
 
+## Prerequisites
+
+### Docker
+
+	sudo apt install docker.io
+	sudo usermod -aG docker $USER
+
+### FFMPEG with OpenGL stitching
+
+    git clone git@github.com:johnboiles/ffmpeg-opengl.git
+    git clone git@github.com:FFmpeg/FFmpeg.git
+    cd FFmpeg
+    cp ../ffmpeg-opengl/*.c libavfilter/
+	git apply ../ffmpeg-opengl/FFmpeg.diff
+    ./configure  --enable-libx264 --enable-filter=dualfisheyetoer --enable-gpl --enable-opengl --extra-libs='-lGLEW -lglfw'
+    make -j10
+
 ## Setup
 
 Run the docker for nginx-rtmp
