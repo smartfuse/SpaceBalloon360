@@ -27,6 +27,7 @@ Vagrant.configure("2") do |config|
   # config.vbguest.no_install = true
 
   config.vm.provision "file", source: File.join(vagrant_dir,"scripts/run.sh"), destination: "/home/vagrant/run.sh"
+  config.vm.provision "file", source: File.join(vagrant_dir,"scripts/start.sh"), destination: "/home/vagrant/Desktop/start.sh"
   #config.vm.provision "file", source: File.join(vagrant_dir,"provision/x11.service"), destination: "/etc/systemd/system/x11.service"
 
   config.vm.synced_folder File.join(vagrant_dir,".."), "/SpaceBalloon360"
