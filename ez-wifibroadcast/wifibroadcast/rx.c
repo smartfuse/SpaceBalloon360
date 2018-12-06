@@ -17,7 +17,6 @@
 #include "lib.h"
 #include "wifibroadcast.h"
 #include <pcap.h>
-#include <netdb.h>
 #include "radiotap.h"
 #include "udp/rx_udp_util.h"
 #include "udp/udp_client.h"
@@ -599,11 +598,6 @@ block_buffer_t *create_block_buffer_list() {
     return block_buffer_list;
 }
 
-void resolve_name(const char *domain, char *out) {
-    struct hostent* info = gethostbyname(domain);
-    strcpy(out, inet_ntoa(*((struct in_addr*) info->h_addr_list[0])));
-}
-
 int main(int argc, char *argv[]) {
     setpriority(PRIO_PROCESS, 0, -10);
 
@@ -671,13 +665,9 @@ int main(int argc, char *argv[]) {
     FILE* procfile;
 
     if (param_udp_remote_port > 0 && strlen(remote_address) != 0) {
-        char resolved_name[MAX_ADDRESS_LENGTH];
-        resolve_name(remote_address, resolved_name);
-        session = start_session(resolved_name, param_udp_remote_port, 0);
+        session = start_session(remote_address, param_udp_remote_port, 0);
     } else if(param_udp_receive_port > 0 && strlen(remote_address) != 0) {
-        char resolved_name[MAX_ADDRESS_LENGTH];
-        resolve_name(remote_address, resolved_name);
-        session = start_session(resolved_name, param_udp_receive_port, 1);
+        session = start_session(remote_address, param_udp_receive_port, 1);
         char *buffer = create_buffer();
         struct RxStruct rxStruct;
         block_buffer_list = create_block_buffer_list();
