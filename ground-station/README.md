@@ -11,14 +11,18 @@ This directory has everything needed to use Vagrant to create a VM that's ready 
 
 ```bash
 # Install VirtualBox
-brew cask install virtualbox
+brew cask install virtualbox virtualbox-extension-pack
 # Install Vagrant
 brew cask install vagrant
 # Install the Vagrant VirtualBox guest-additions updater plugin
 vagrant plugin install vagrant-vbguest
 # Build the image
 vagrant up
+# Once it builts you usually need to reboot
+vagrant halt && vagrant up
 ```
+
+You can now log into the desktop environment using username:vagrant password:vagrant
 
 ## Developing
 
